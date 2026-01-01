@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -27,17 +27,14 @@ import {
   useReadContract,
   useReadContracts,
   useWriteContract,
-  useWaitForTransactionReceipt,
   useAccount,
-  useConnect,
-  useDisconnect,
 } from "wagmi";
 import { formatUnits, parseUnits } from "viem";
 import EmployeeRegistryABI from "../../lib/abi/EmployeeRegistry.json";
 import { useQueryClient } from "@tanstack/react-query";
 
 const EMPLOYEE_REGISTRY_ADDRESS =
-  "0x5133BBdfCCa3Eb4F739D599ee4eC45cBCD0E16c5" as const;
+  "0xf23147Df55089eA6bA87BF24bb4eEE6f7Cea182b" as const;
 
 // Type for formatted employee data
 interface EmployeeData {
@@ -50,9 +47,6 @@ interface EmployeeData {
 
 export default function EmployeesPage() {
   const queryClient = useQueryClient();
-  const { address, isConnected } = useAccount();
-  const { connect, connectors } = useConnect();
-  const { disconnect } = useDisconnect();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<string | null>(null);
@@ -65,24 +59,20 @@ export default function EmployeesPage() {
 
   /* ==================== READ CONTRACTS ==================== */
 
+  // Get counts
   const { data: totalEmployees } = useReadContract({
     address: EMPLOYEE_REGISTRY_ADDRESS,
     abi: EmployeeRegistryABI.abi,
     functionName: "totalEmployees",
-    query: {
-      enabled: isConnected,
-    },
   });
 
   const { data: activeEmployees } = useReadContract({
     address: EMPLOYEE_REGISTRY_ADDRESS,
     abi: EmployeeRegistryABI.abi,
     functionName: "activeEmployees",
-    query: {
-      enabled: isConnected,
-    },
   });
 
+  console.log("📊 Employee Counts:");
   console.log("totalEmployees:", totalEmployees?.toString());
   console.log("activeEmployees:", activeEmployees?.toString());
 
@@ -91,12 +81,7 @@ export default function EmployeesPage() {
     address: EMPLOYEE_REGISTRY_ADDRESS,
     abi: EmployeeRegistryABI.abi,
     functionName: "getActiveEmployees",
-    query: {
-      enabled: isConnected,
-    },
   });
-
-  console.log("Raw employeeAddresses:", employeeAddresses);
 
   // BATCH FETCH: Create array of calls for each employee
   const employeeCalls =
@@ -111,24 +96,22 @@ export default function EmployeesPage() {
   const { data: employeesResults, isLoading: isTableLoading } =
     useReadContracts({
       contracts: employeeCalls,
-      query: {
-        enabled: isConnected && employeeCalls.length > 0,
-      },
     });
+
+  // 🔍 STEP 3: Log the raw results from blockchain
+  console.log("=== STEP 3: Raw Results from Blockchain ===");
+  console.log("employeesResults:", employeesResults);
+  console.log("Is loading?", isTableLoading);
 
   // FORMAT: Convert blockchain data to usable format
   const tableData: EmployeeData[] =
     employeesResults
       ?.map((res, index) => {
-        // 🔍 STEP 4: Log each individual result as we process it
-        console.log(`=== Processing Employee ${index + 1} ===`);
-        console.log("Address:", employeeAddresses![index]);
-        console.log("Raw result:", res);
-        console.log("Has result?", !!res.result);
+     
 
         // Check if we got valid data
         if (!res.result) {
-          console.log("❌ No result for this employee!");
+          console.log(" No result for this employee!");
           return null;
         }
 
@@ -152,56 +135,27 @@ export default function EmployeesPage() {
         return {
           address: employeeAddresses![index],
           name,
-          salary: formatUnits(salary, 6),
+          salary: formatUnits(salary, 6), // Convert to readable USDC
           isActive,
           role,
         };
       })
       .filter((item): item is EmployeeData => item !== null) || [];
 
+  // 🔍 STEP 5: Log the final formatted data
+  console.log("=== STEP 5: Final Table Data ===");
+  console.log("tableData:", tableData);
+  console.log("Number of employees to display:", tableData.length);
 
   /* ==================== WRITE CONTRACTS ==================== */
 
-  const { mutate: addEmployee, isPending: isAddPending, data: addHash } = useWriteContract();
-  const { mutate: updateEmployee, isPending: isUpdatePending, data: updateHash } =
+  const { mutate: addEmployee, isPending: isAddPending } = useWriteContract();
+  const { mutate: updateEmployee, isPending: isUpdatePending } =
     useWriteContract();
-  const { mutate: deactivateEmployee, isPending: isDeactivatePending, data: deactivateHash } =
+  const { mutate: deactivateEmployee, isPending: isDeactivatePending } =
     useWriteContract();
-  const { mutate: activateEmployee, isPending: isActivatePending, data: activateHash } =
+  const { mutate: activateEmployee, isPending: isActivatePending } =
     useWriteContract();
-
-  // Wait for transaction confirmations
-  console.log("Transaction hashes:", { addHash, updateHash, deactivateHash, activateHash });
-  
-  const { isSuccess: isAddSuccess } = useWaitForTransactionReceipt({
-    hash: addHash,
-  });
-  const { isSuccess: isUpdateSuccess } = useWaitForTransactionReceipt({
-    hash: updateHash,
-  });
-  const { isSuccess: isDeactivateSuccess } = useWaitForTransactionReceipt({
-    hash: deactivateHash,
-  });
-  const { isSuccess: isActivateSuccess } = useWaitForTransactionReceipt({
-    hash: activateHash,
-  });
-
-  // Refetch when any transaction succeeds
-  React.useEffect(() => {
-    console.log("Transaction status check:", {
-      isAddSuccess,
-      isUpdateSuccess,
-      isDeactivateSuccess,
-      isActivateSuccess,
-    });
-    
-    if (isAddSuccess || isUpdateSuccess || isDeactivateSuccess || isActivateSuccess) {
-      console.log("Invalidating queries...");
-      queryClient.invalidateQueries({ queryKey: ["readContract"] });
-      // Also try more aggressive invalidation
-      queryClient.invalidateQueries();
-    }
-  }, [isAddSuccess, isUpdateSuccess, isDeactivateSuccess, isActivateSuccess, queryClient]);
 
   /* ==================== HANDLERS ==================== */
 
@@ -245,6 +199,8 @@ export default function EmployeesPage() {
           onSuccess: () => {
             setIsAddDialogOpen(false);
             resetForm();
+            // Refetch employee list after adding
+            queryClient.invalidateQueries({ queryKey: ["readContract"] });
           },
         }
       );
@@ -255,7 +211,7 @@ export default function EmployeesPage() {
   };
 
   const handleEditEmployee = (employeeAddress: string) => {
-    
+    // Find employee in our already-fetched data
     const employee = tableData.find((e) => e.address === employeeAddress);
 
     if (employee) {
@@ -300,6 +256,7 @@ export default function EmployeesPage() {
           onSuccess: () => {
             setIsEditDialogOpen(false);
             resetForm();
+            queryClient.invalidateQueries({ queryKey: ["readContract"] });
           },
         }
       );
@@ -319,7 +276,9 @@ export default function EmployeesPage() {
           args: [employeeAddress as `0x${string}`],
         },
         {
-          onSuccess: () => {},
+          onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["readContract"] });
+          },
         }
       );
     }
@@ -333,32 +292,16 @@ export default function EmployeesPage() {
         functionName: "activateEmployee",
         args: [employeeAddress as `0x${string}`],
       },
-{
-          onSuccess: () => {},
-        }
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ["readContract"] });
+        },
+      }
     );
   };
 
   return (
     <div className="p-8 bg-[#114277] min-h-screen">
-      {/* Wallet Connection Section */}
-      {!isConnected && (
-        <div className="mb-8 bg-white rounded-lg p-6 shadow-lg">
-          <h3 className="text-lg font-semibold mb-4">Connect Your Wallet</h3>
-          <div className="flex gap-2">
-            {connectors.map((connector) => (
-              <button
-                key={connector.uid}
-                onClick={() => connect({ connector })}
-                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
-              >
-                Connect {connector.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-      
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-white">Employees</h1>
@@ -366,28 +309,14 @@ export default function EmployeesPage() {
             Manage your team and their payroll settings
           </p>
           <div className="mt-4 flex gap-4 text-sm text-gray-300">
-            {isConnected && (
-              <>
-                <span>Connected: {address?.slice(0, 6)}...{address?.slice(-4)}</span>
-                <span>Total: {totalEmployees?.toString() ?? "0"}</span>
-                <span>Active: {activeEmployees?.toString() ?? "0"}</span>
-                <button
-                  onClick={() => disconnect()}
-                  className="px-2 py-1 bg-red-500 text-white rounded text-xs"
-                >
-                  Disconnect
-                </button>
-              </>
-            )}
-            {!isConnected && (
-              <span className="text-yellow-300">Please connect your wallet to view employees</span>
-            )}
+            <span>Total: {totalEmployees?.toString() ?? "0"}</span>
+            <span>Active: {activeEmployees?.toString() ?? "0"}</span>
           </div>
         </div>
 
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-2" disabled={!isConnected}>
+            <Button className="gap-2">
               <Plus className="h-4 w-4" />
               Add Employee
             </Button>

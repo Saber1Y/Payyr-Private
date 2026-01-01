@@ -1,7 +1,6 @@
 import { createConfig, http } from "wagmi";
 import { mainnet, sepolia } from "wagmi/chains";
 import { defineChain } from "viem";
-import { injected, metaMask, walletConnect } from "wagmi/connectors";
 
 const arcTestnet = defineChain({
   id: 5042002,
@@ -21,11 +20,7 @@ const arcTestnet = defineChain({
 
 export const config = createConfig({
   chains: [mainnet, sepolia, arcTestnet],
-  connectors: [
-    injected(),
-    metaMask(),
-    walletConnect({ projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "" }),
-  ],
+
   transports: {
     [mainnet.id]: http(),
     [sepolia.id]: http(),

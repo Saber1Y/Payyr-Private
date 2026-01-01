@@ -53,7 +53,7 @@ export default function DashboardPage() {
     address: PAYROLL_REGISTRY_ADDRESS,
     abi: PayrollContractABi.abi,
     functionName: "payrollRuns",
-    args: [currentPayrollId ? (currentPayrollId as bigint) - 1n : 0n],
+    args: [currentPayrollId && typeof currentPayrollId === 'string' ? BigInt(currentPayrollId) - BigInt(1) : BigInt(0)],
     query: {
       enabled: !!currentPayrollId && Number(currentPayrollId) > 1,
     },
@@ -63,7 +63,7 @@ export default function DashboardPage() {
     address: PAYROLL_REGISTRY_ADDRESS,
     abi: PayrollContractABi.abi,
     functionName: "payrollRuns",
-    args: [currentPayrollId ? (currentPayrollId as bigint) - 2n : 0n],
+    args: [currentPayrollId && typeof currentPayrollId === 'string' ? BigInt(currentPayrollId) - BigInt(2) : BigInt(0)],
     query: {
       enabled: !!currentPayrollId && Number(currentPayrollId) > 2,
     },

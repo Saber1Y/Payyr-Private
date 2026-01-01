@@ -123,20 +123,27 @@ export default function PayrollPage() {
 
   /* ==================== FORMAT DATA ==================== */
 
-  const formatPayrollData = (data: any) => {
+  const formatPayrollData = (data: unknown) => {
     if (!data) return null;
+    const payrollData = data as {
+      id: bigint;
+      timestamp: bigint;
+      totalAmount: bigint;
+      employeeCount: bigint;
+      isCompleted: boolean;
+    };
     return {
-      id: Number(data.id),
-      date: new Date(Number(data.timestamp) * 1000),
-      amount: formatBalance(data.totalAmount),
-      employees: Number(data.employeeCount),
-      completed: data.isCompleted,
+      id: Number(payrollData.id),
+      date: new Date(Number(payrollData.timestamp) * 1000),
+      amount: formatBalance(payrollData.totalAmount),
+      employees: Number(payrollData.employeeCount),
+      completed: payrollData.isCompleted,
     };
   };
 
-  const formattedMonthlyBalance = formatBalance(monthlyPayrollCost);
-  const formattedUserBalance = formatBalance(userBalance);
-  const formattedContractBalance = formatBalance(contractBalance);
+  const formattedMonthlyBalance = formatBalance(monthlyPayrollCost as bigint | undefined);
+  const formattedUserBalance = formatBalance(userBalance as bigint | undefined);
+  const formattedContractBalance = formatBalance(contractBalance as bigint | undefined);
 
   const hasSufficientFunds =
     formattedContractBalance >= formattedMonthlyBalance;
@@ -145,7 +152,7 @@ export default function PayrollPage() {
     formatPayrollData(payrollHistory1),
     formatPayrollData(payrollHistory2),
     formatPayrollData(payrollHistory3),
-  ].filter(Boolean);
+  ].filter((item): item is NonNullable<typeof item> => item !== null);
 
 
   if (!authenticated) {
@@ -447,26 +454,26 @@ export default function PayrollPage() {
               </TableHeader>
               <TableBody>
                 {history.map((record) => (
-                  <TableRow key={record.id}>
-                    <TableCell className="font-medium">#{record.id}</TableCell>
+                  <TableRow key={record!.id}>
+                    <TableCell className="font-medium">#{record!.id}</TableCell>
                     <TableCell>
-                      {record.date.toLocaleDateString("en-US", {
+                      {record!.date.toLocaleDateString("en-US", {
                         month: "short",
                         day: "numeric",
                         year: "numeric",
                       })}
                     </TableCell>
-                    <TableCell>{record.employees}</TableCell>
+                    <TableCell>{record!.employees}</TableCell>
                     <TableCell>
                       $
-                      {record.amount.toLocaleString(undefined, {
+                      {record!.amount.toLocaleString(undefined, {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
                       })}
                     </TableCell>
                     <TableCell>
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        {record.completed ? "Completed" : "Pending"}
+                        {record!.completed ? "Completed" : "Pending"}
                       </span>
                     </TableCell>
                   </TableRow>

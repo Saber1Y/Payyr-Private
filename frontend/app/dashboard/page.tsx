@@ -9,8 +9,8 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 import { useReadContract } from "wagmi";
-import { formatUnits } from "viem";
-import formatBalance from "@/utils/utils";
+import formatBalance, { formatPayroll } from "@/utils/utils";
+import type { PayrollRun } from "@/types/contracts";
 import PayrollContractABi from "../../lib/abi/PayrollManager.json";
 
 const PAYROLL_REGISTRY_ADDRESS =
@@ -69,23 +69,14 @@ export default function DashboardPage() {
     },
   });
 
-  const formattedContractBalance = formatBalance(contractBalance);
+  const formattedContractBalance = formatBalance(contractBalance as bigint | undefined);
 
-  // Helper to format payroll data
-  const formatPayroll = (payroll: any) => {
-    if (!payroll) return null;
-    return {
-      amount: Number(formatUnits(payroll.totalAmount, 6)),
-      employeeCount: Number(payroll.employeeCount),
-      timestamp: Number(payroll.timestamp) * 1000,
-      isCompleted: payroll.isCompleted,
-    };
-  };
+  
 
   const recentPayrolls = [
-    payroll1 ? formatPayroll(payroll1) : null,
-    payroll2 ? formatPayroll(payroll2) : null,
-    payroll3 ? formatPayroll(payroll3) : null,
+    formatPayroll(payroll1 as PayrollRun | null),
+    formatPayroll(payroll2 as PayrollRun | null),
+    formatPayroll(payroll3 as PayrollRun | null),
   ].filter(Boolean);
 
   const lastPayroll = recentPayrolls[0];
@@ -148,7 +139,7 @@ export default function DashboardPage() {
                 : "0.00"}
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              {lastPayroll?.employeeCount ?? 0} employees paid
+              {lastPayroll?.employees ?? 0} employees paid
             </p>
           </CardContent>
         </Card>
@@ -163,7 +154,7 @@ export default function DashboardPage() {
           <CardContent>
             <div className="text-2xl font-bold text-gray-900">
               {lastPayroll
-                ? new Date(lastPayroll.timestamp).toLocaleDateString("en-US", {
+                ? lastPayroll.date.toLocaleDateString("en-US", {
                     month: "short",
                     day: "numeric",
                   })
@@ -171,7 +162,7 @@ export default function DashboardPage() {
             </div>
             <p className="text-xs text-gray-500 mt-1">
               {lastPayroll
-                ? new Date(lastPayroll.timestamp).toLocaleDateString("en-US", {
+                ? lastPayroll.date.toLocaleDateString("en-US", {
                     year: "numeric",
                   })
                 : "No payrolls yet"}
@@ -207,7 +198,7 @@ export default function DashboardPage() {
                           Monthly Payroll
                         </p>
                         <p className="text-sm text-gray-500">
-                          {new Date(payroll.timestamp).toLocaleDateString(
+                          {payroll?.date.toLocaleDateString(
                             "en-US",
                             {
                               month: "short",
@@ -227,9 +218,9 @@ export default function DashboardPage() {
                         })}
                       </span>
                       <p className="text-xs text-gray-500">
-                        {payroll?.employeeCount} employees
+                        {payroll?.employees} employees
                       </p>
-                      {payroll?.isCompleted && (
+                      {payroll?.completed && (
                         <p className="text-xs text-green-600">✓ Completed</p>
                       )}
                     </div>
@@ -269,7 +260,7 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between">
                 <span className="text-gray-600">Funds Available</span>
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  {contractBalance && contractBalance > 0n
+                  {contractBalance && (contractBalance as bigint) > 0n
                     ? "Sufficient"
                     : "Low"}
                 </span>

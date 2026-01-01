@@ -27,10 +27,10 @@ import {
   useReadContract,
   useReadContracts,
   useWriteContract,
-  useAccount,
 } from "wagmi";
 import { formatUnits, parseUnits } from "viem";
 import EmployeeRegistryABI from "../../lib/abi/EmployeeRegistry.json";
+import type { Abi } from "viem";
 import { useQueryClient } from "@tanstack/react-query";
 
 const EMPLOYEE_REGISTRY_ADDRESS =
@@ -72,7 +72,6 @@ export default function EmployeesPage() {
     functionName: "activeEmployees",
   });
 
-  console.log("📊 Employee Counts:");
   console.log("totalEmployees:", totalEmployees?.toString());
   console.log("activeEmployees:", activeEmployees?.toString());
 
@@ -87,7 +86,7 @@ export default function EmployeesPage() {
   const employeeCalls =
     (employeeAddresses as string[] | undefined)?.map((addr) => ({
       address: EMPLOYEE_REGISTRY_ADDRESS,
-      abi: EmployeeRegistryABI.abi,
+      abi: EmployeeRegistryABI.abi as Abi,
       functionName: "employees",
       args: [addr],
     })) || [];
@@ -98,10 +97,6 @@ export default function EmployeesPage() {
       contracts: employeeCalls,
     });
 
-  // 🔍 STEP 3: Log the raw results from blockchain
-  console.log("=== STEP 3: Raw Results from Blockchain ===");
-  console.log("employeesResults:", employeesResults);
-  console.log("Is loading?", isTableLoading);
 
   // FORMAT: Convert blockchain data to usable format
   const tableData: EmployeeData[] =
@@ -133,7 +128,7 @@ export default function EmployeesPage() {
         });
 
         return {
-          address: employeeAddresses![index],
+          address: (employeeAddresses as string[])[index],
           name,
           salary: formatUnits(salary, 6), // Convert to readable USDC
           isActive,
@@ -142,10 +137,7 @@ export default function EmployeesPage() {
       })
       .filter((item): item is EmployeeData => item !== null) || [];
 
-  // 🔍 STEP 5: Log the final formatted data
-  console.log("=== STEP 5: Final Table Data ===");
-  console.log("tableData:", tableData);
-  console.log("Number of employees to display:", tableData.length);
+
 
   /* ==================== WRITE CONTRACTS ==================== */
 

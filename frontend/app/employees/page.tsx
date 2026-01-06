@@ -30,7 +30,7 @@ import type { Abi } from "viem";
 import { useQueryClient } from "@tanstack/react-query";
 
 const EMPLOYEE_REGISTRY_ADDRESS =
-  "0x4c7A677a9106249eb5eD7211965aBb6f5e4FBd99" as const;
+  "0x3899466Af78C1A72F80a203b3b85781eDf905B31" as const;
 
 // Type for formatted employee data
 interface EmployeeData {

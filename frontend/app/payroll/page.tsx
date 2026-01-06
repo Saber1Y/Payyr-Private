@@ -32,9 +32,9 @@ import EmployeeRegistryABI from "../../lib/abi/EmployeeRegistry.json";
 import { usePrivy } from "@privy-io/react-auth";
 
 const EMPLOYEE_REGISTRY_ADDRESS =
-  "0x4c7A677a9106249eb5eD7211965aBb6f5e4FBd99" as const;
+  "0x3899466Af78C1A72F80a203b3b85781eDf905B31" as const;
 const PAYROLL_REGISTRY_ADDRESS =
-  "0x464EBe9DF3494074667ea2fAcE94413e8d9c7d3E" as const;
+  "0xEc64E03F6A8a98f2250cDD04ad701D7686046654" as const;
 
 const ARC_USDC_ADDR = "0x3600000000000000000000000000000000000000" as const;
 

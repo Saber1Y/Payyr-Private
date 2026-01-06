@@ -172,7 +172,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         <Card>
           <CardHeader>
             <CardTitle className="text-lg text-black font-semibold">

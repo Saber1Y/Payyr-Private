@@ -33,15 +33,15 @@ export default function SettingsPage() {
   ];
 
   return (
-    <div className="p-8 bg-[#114277] h-screen text-black">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white">Settings</h1>
-        <p className="text-white mt-2">
+    <div className="p-4 md:p-8 bg-[#114277] min-h-screen text-black">
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold text-white">Settings</h1>
+        <p className="text-white mt-2 text-sm md:text-base">
           Configure your payroll system preferences
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         {/* Company Settings */}
         <Card>
           <CardHeader>
@@ -152,7 +152,7 @@ export default function SettingsPage() {
             <CardTitle>Network Information</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Network</Label>
                 <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">

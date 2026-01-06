@@ -304,7 +304,7 @@ export default function EmployeesPage() {
               Add Employee
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="sm:max-w-[425px] text-black">
             <DialogHeader>
               <DialogTitle>Add New Employee</DialogTitle>
               <DialogDescription>
@@ -382,7 +382,7 @@ export default function EmployeesPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Employee List</CardTitle>
+          <CardTitle className="text-black">Employee List</CardTitle>
         </CardHeader>
         <CardContent>
           {isTableLoading ? (
@@ -408,7 +408,7 @@ export default function EmployeesPage() {
               </TableHeader>
               <TableBody>
                 {tableData.map((employee) => (
-                  <TableRow key={employee.address}>
+                  <TableRow key={employee.address} className="text-black">
                     <TableCell className="font-medium">
                       {employee.name}
                     </TableCell>
@@ -474,7 +474,7 @@ export default function EmployeesPage() {
 
       {/* Edit Employee Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[425px] text-black">
           <DialogHeader>
             <DialogTitle>Edit Employee</DialogTitle>
             <DialogDescription>

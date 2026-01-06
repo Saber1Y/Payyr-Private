@@ -119,7 +119,7 @@ export default function PayrollPage() {
 
   /* ==================== WRITE CONTRACT ==================== */
 
-  const { mutate: writeContract, isPending } = useWriteContract();
+  const { writeContract, isPending } = useWriteContract();
 
   /* ==================== FORMAT DATA ==================== */
 
@@ -206,16 +206,16 @@ export default function PayrollPage() {
   };
 
   return (
-    <div className="p-8 bg-[#114277] min-h-screen">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white">Payroll</h1>
-        <p className="text-gray-300 mt-2">
+    <div className="p-4 md:p-8 bg-[#114277] min-h-screen">
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold text-white">Payroll</h1>
+        <p className="text-gray-300 mt-2 text-sm md:text-base">
           Manage deposits and payroll payments on Arc Network
         </p>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">
@@ -304,12 +304,12 @@ export default function PayrollPage() {
       </div>
 
       {/* Action Buttons with Two-Step Dialog */}
-      <div className="flex gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row gap-3 md:gap-4 mb-6 md:mb-8">
         <Dialog open={step !== "closed"} onOpenChange={() => setStep("closed")}>
           <DialogTrigger asChild>
             <Button
               variant="outline"
-              className="gap-2"
+              className="gap-2 w-full sm:w-auto"
               onClick={() => setStep("approve")}
             >
               <Wallet className="h-4 w-4 text-black" />
@@ -413,19 +413,21 @@ export default function PayrollPage() {
         </Dialog>
 
         <Button
-          className="gap-2"
+          className="gap-2 w-full sm:w-auto"
           disabled={!hasSufficientFunds || isPending}
           onClick={handlePayAll}
         >
           {isPending ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Processing...
+              <span className="hidden sm:inline">Processing...</span>
+              <span className="sm:hidden">Processing</span>
             </>
           ) : (
             <>
               <Send className="h-4 w-4" />
-              Pay All Employees
+              <span className="hidden sm:inline">Pay All Employees</span>
+              <span className="sm:hidden">Pay All</span>
             </>
           )}
         </Button>
@@ -442,44 +444,46 @@ export default function PayrollPage() {
               No payroll history yet. Execute your first payroll.
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Run #</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Employees</TableHead>
-                  <TableHead>Total Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {history.map((record) => (
-                  <TableRow key={record!.id}>
-                    <TableCell className="font-medium">#{record!.id}</TableCell>
-                    <TableCell>
-                      {record!.date.toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </TableCell>
-                    <TableCell>{record!.employees}</TableCell>
-                    <TableCell>
-                      $
-                      {record!.amount.toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </TableCell>
-                    <TableCell>
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        {record!.completed ? "Completed" : "Pending"}
-                      </span>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="min-w-[60px]">Run #</TableHead>
+                    <TableHead className="min-w-[100px]">Date</TableHead>
+                    <TableHead className="min-w-[70px]">Employees</TableHead>
+                    <TableHead className="min-w-[100px]">Total Amount</TableHead>
+                    <TableHead className="min-w-[80px]">Status</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {history.map((record) => (
+                    <TableRow key={record!.id}>
+                      <TableCell className="font-medium">#{record!.id}</TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {record!.date.toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </TableCell>
+                      <TableCell>{record!.employees}</TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        $
+                        {record!.amount.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                      <TableCell>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          {record!.completed ? "Completed" : "Pending"}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

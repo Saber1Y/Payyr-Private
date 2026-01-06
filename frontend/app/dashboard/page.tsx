@@ -82,16 +82,16 @@ export default function DashboardPage() {
   const lastPayroll = recentPayrolls[0];
 
   return (
-    <div className="p-8 bg-[#114277] min-h-screen">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white">Dashboard</h1>
-        <p className="text-gray-300 mt-2">
+    <div className="p-4 md:p-8 bg-[#114277] min-h-screen">
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold text-white">Dashboard</h1>
+        <p className="text-gray-300 mt-2 text-sm md:text-base">
           Overview of your payroll system on Arc Network
         </p>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">
@@ -100,7 +100,7 @@ export default function DashboardPage() {
             <DollarSign className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">
+            <div className="text-xl md:text-2xl font-bold text-gray-900">
               {formattedContractBalance}
             </div>
             <p className="text-xs text-gray-500 mt-1">Available for payroll</p>
@@ -109,13 +109,13 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
+            <CardTitle className="text-xs md:text-sm font-medium text-gray-600">
               Total Payroll Runs
             </CardTitle>
             <Users className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">
+            <div className="text-xl md:text-2xl font-bold text-gray-900">
               {totalPayrollRuns?.toString() ?? "0"}
             </div>
             <p className="text-xs text-gray-500 mt-1">All time executions</p>
@@ -124,13 +124,13 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
+            <CardTitle className="text-xs md:text-sm font-medium text-gray-600">
               Last Payroll Amount
             </CardTitle>
             <TrendingUp className="h-4 w-4 text-indigo-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">
+            <div className="text-xl md:text-2xl font-bold text-gray-900">
               $
               {lastPayroll
                 ? lastPayroll.amount.toLocaleString("en-US", {
@@ -146,13 +146,13 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
+            <CardTitle className="text-xs md:text-sm font-medium text-gray-600">
               Last Payroll Date
             </CardTitle>
             <Calendar className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">
+            <div className="text-xl md:text-2xl font-bold text-gray-900">
               {lastPayroll
                 ? lastPayroll.date.toLocaleDateString("en-US", {
                     month: "short",

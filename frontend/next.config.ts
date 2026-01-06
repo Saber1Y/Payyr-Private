@@ -10,7 +10,9 @@ const nextConfig: NextConfig = {
     'pino',
     'thread-stream'
   ],
-  turbopack: {},
+  turbopack: {
+    root: __dirname,
+  },
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {

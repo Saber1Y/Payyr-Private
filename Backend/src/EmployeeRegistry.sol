@@ -192,4 +192,14 @@ contract EmployeeRegistry is AccessControl {
     function isActiveEmployee(address _employee) external view returns (bool) {
         return employees[_employee].isActive;
     }
+
+    /**
+     * @dev Grant admin role to another address (only default admin can call)
+     * @param _newAdmin Address to grant admin role to
+     */
+    function grantAdminRole(address _newAdmin) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_newAdmin != address(0), "Invalid admin address");
+        _grantRole(ADMIN_ROLE, _newAdmin);
+        _grantRole(HR_ROLE, _newAdmin);
+    }
 }

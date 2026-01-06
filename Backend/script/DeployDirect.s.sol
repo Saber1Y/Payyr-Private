@@ -5,21 +5,19 @@ import "forge-std/Script.sol";
 import "../src/PayrollManager.sol";
 import "../src/EmployeeRegistry.sol";
 
-contract Deploy is Script {
+contract DeployDirect is Script {
     address constant USDC_ADDRESS = 0x3600000000000000000000000000000000000000;
 
     function run() external {
-
+        // Get private key from environment variable
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-
-        // 2. Derive deployer address
         address deployer = vm.addr(deployerPrivateKey);
 
         console.log("Deploying contracts...");
-        console.log("Deployer address:", deployer);
         console.log("USDC address:", USDC_ADDRESS);
+        console.log("Deployer address:", deployer);
 
-        // 3. IMPORTANT: bind the private key
+        // Start broadcast using the private key
         vm.startBroadcast(deployerPrivateKey);
 
         EmployeeRegistry employeeRegistry = new EmployeeRegistry(deployer);

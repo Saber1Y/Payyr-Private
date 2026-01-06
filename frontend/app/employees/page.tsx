@@ -23,18 +23,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Plus, Edit, UserX, UserCheck, Loader2 } from "lucide-react";
-import {
-  useReadContract,
-  useReadContracts,
-  useWriteContract,
-} from "wagmi";
+import { useReadContract, useReadContracts, useWriteContract } from "wagmi";
 import { formatUnits, parseUnits } from "viem";
 import EmployeeRegistryABI from "../../lib/abi/EmployeeRegistry.json";
 import type { Abi } from "viem";
 import { useQueryClient } from "@tanstack/react-query";
 
 const EMPLOYEE_REGISTRY_ADDRESS =
-  "0xf23147Df55089eA6bA87BF24bb4eEE6f7Cea182b" as const;
+  "0x4c7A677a9106249eb5eD7211965aBb6f5e4FBd99" as const;
 
 // Type for formatted employee data
 interface EmployeeData {
@@ -97,13 +93,10 @@ export default function EmployeesPage() {
       contracts: employeeCalls,
     });
 
-
   // FORMAT: Convert blockchain data to usable format
   const tableData: EmployeeData[] =
     employeesResults
       ?.map((res, index) => {
-     
-
         // Check if we got valid data
         if (!res.result) {
           console.log(" No result for this employee!");
@@ -136,8 +129,6 @@ export default function EmployeesPage() {
         };
       })
       .filter((item): item is EmployeeData => item !== null) || [];
-
-
 
   /* ==================== WRITE CONTRACTS ==================== */
 

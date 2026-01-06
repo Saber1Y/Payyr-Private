@@ -18,6 +18,8 @@ const arcTestnet = defineChain({
   },
 });
 
+// dd70638da83e6b76bf26d24bb95165d492d051747248369a211b335f8206e6b1
+
 export const config = createConfig({
   chains: [mainnet, sepolia, arcTestnet],
 
@@ -27,3 +29,4 @@ export const config = createConfig({
     [arcTestnet.id]: http(),
   },
 });
+

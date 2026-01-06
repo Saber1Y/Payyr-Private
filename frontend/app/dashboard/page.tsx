@@ -14,7 +14,7 @@ import type { PayrollRun } from "@/types/contracts";
 import PayrollContractABi from "../../lib/abi/PayrollManager.json";
 
 const PAYROLL_REGISTRY_ADDRESS =
-  "0x03A71968491d55603FFe1b11A9e23eF013f75bCF" as const;
+  "0x464EBe9DF3494074667ea2fAcE94413e8d9c7d3E" as const;
 
 export default function DashboardPage() {
   // Get contract balance

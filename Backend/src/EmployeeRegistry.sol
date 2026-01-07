@@ -16,6 +16,7 @@ contract EmployeeRegistry is AccessControl {
     bytes32 public constant HR_ROLE = keccak256("HR_ROLE");
 
     struct Employee {
+        address employer;
         string name;
         uint256 salary; 
         bool isActive;
@@ -25,19 +26,35 @@ contract EmployeeRegistry is AccessControl {
 
     mapping(address => Employee) public employees;
     address[] public employeeAddresses;
+    mapping(address => bool) public isEmployer;
     
     uint256 public totalEmployees;
     uint256 public activeEmployees;
+    uint256 public totalEmployers;
 
-    event EmployeeAdded(address indexed employee, string name, uint256 salary);
+    event EmployeeAdded(address indexed employee, address indexed employer, string name, uint256 salary);
     event EmployeeUpdated(address indexed employee, string name, uint256 salary);
     event EmployeeActivated(address indexed employee);
     event EmployeeDeactivated(address indexed employee);
+    event EmployerRegistered(address indexed employer);
 
     constructor(address _admin) {
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         _grantRole(ADMIN_ROLE, _admin);
         _grantRole(HR_ROLE, _admin);
+    }
+
+    /**
+     * @dev Register as an employer (grants HR_ROLE)
+     */
+    function registerAsEmployer() external {
+        require(!isEmployer[msg.sender], "Already registered as employer");
+        
+        isEmployer[msg.sender] = true;
+        _grantRole(HR_ROLE, msg.sender);
+        totalEmployers++;
+        
+        emit EmployerRegistered(msg.sender);
     }
 
     /**
@@ -54,19 +71,18 @@ contract EmployeeRegistry is AccessControl {
         uint256 _salary,
         string calldata _role
     ) external onlyRole(HR_ROLE) {
-
         if (_employee == address(0)) {
             revert InvalidEmployeeAddress();
         }
-        // require(_employee != address(0), "Invalid employee address");
         if (bytes(_name).length < 0) {
             revert NameCannotBeEmpty();
         }
         require(bytes(_name).length > 0, "Name cannot be empty");
         require(_salary > 0, "Salary must be greater than 0");
-        require(!employees[_employee].isActive, "Employee already exists");
+        require(employees[_employee].startDate == 0, "Employee already exists");
 
         employees[_employee] = Employee({
+            employer: msg.sender,
             name: _name,
             salary: _salary,
             isActive: true,
@@ -78,7 +94,7 @@ contract EmployeeRegistry is AccessControl {
         totalEmployees++;
         activeEmployees++;
 
-        emit EmployeeAdded(_employee, _name, _salary);
+        emit EmployeeAdded(_employee, msg.sender, _name, _salary);
     }
 
     /**
@@ -95,7 +111,9 @@ contract EmployeeRegistry is AccessControl {
         uint256 _salary,
         string calldata _role
     ) external onlyRole(HR_ROLE) {
-        require(employees[_employee].isActive, "Employee does not exist");
+        require(employees[_employee].startDate != 0, "Employee does not exist");
+        require(employees[_employee].employer == msg.sender, "Not your employee");
+        require(employees[_employee].isActive, "Employee is inactive");
         require(bytes(_name).length > 0, "Name cannot be empty");
         require(_salary > 0, "Salary must be greater than 0");
 
@@ -111,6 +129,8 @@ contract EmployeeRegistry is AccessControl {
      * @param _employee Employee address
      */
     function deactivateEmployee(address _employee) external onlyRole(HR_ROLE) {
+        require(employees[_employee].startDate != 0, "Employee does not exist");
+        require(employees[_employee].employer == msg.sender, "Not your employee");
         require(employees[_employee].isActive, "Employee not active");
         
         employees[_employee].isActive = false;
@@ -124,8 +144,9 @@ contract EmployeeRegistry is AccessControl {
      * @param _employee Employee address
      */
     function activateEmployee(address _employee) external onlyRole(HR_ROLE) {
+        require(employees[_employee].startDate != 0, "Employee does not exist");
+        require(employees[_employee].employer == msg.sender, "Not your employee");
         require(!employees[_employee].isActive, "Employee already active");
-        require(bytes(employees[_employee].name).length > 0, "Employee does not exist");
         
         employees[_employee].isActive = true;
         activeEmployees++;
@@ -168,6 +189,31 @@ contract EmployeeRegistry is AccessControl {
     }
 
     /**
+     * @dev Get active employees for a specific employer
+     * @param _employer Employer address
+     * @return Array of active employee addresses for the employer
+     */
+    function getEmployerEmployees(address _employer) external view returns (address[] memory) {
+        uint256 count = 0;
+        for (uint256 i = 0; i < employeeAddresses.length; i++) {
+            if (employees[employeeAddresses[i]].employer == _employer && employees[employeeAddresses[i]].isActive) {
+                count++;
+            }
+        }
+
+        address[] memory employerEmps = new address[](count);
+        uint256 index = 0;
+        for (uint256 i = 0; i < employeeAddresses.length; i++) {
+            if (employees[employeeAddresses[i]].employer == _employer && employees[employeeAddresses[i]].isActive) {
+                employerEmps[index] = employeeAddresses[i];
+                index++;
+            }
+        }
+
+        return employerEmps;
+    }
+
+    /**
      * @dev Get total monthly payroll cost
      * @return Total monthly salary for all active employees
      */
@@ -177,6 +223,24 @@ contract EmployeeRegistry is AccessControl {
         
         for (uint256 i = 0; i < employeeAddresses.length; i++) {
             if (employees[employeeAddresses[i]].isActive) {
+                totalCost += employees[employeeAddresses[i]].salary;
+            }
+        }
+        
+        return totalCost;
+    }
+
+    /**
+     * @dev Get employer's total monthly payroll cost
+     * @param _employer Employer address
+     * @return Total monthly salary for employer's active employees
+     */
+    
+    function getEmployerMonthlyCost(address _employer) external view returns (uint256) {
+        uint256 totalCost = 0;
+        
+        for (uint256 i = 0; i < employeeAddresses.length; i++) {
+            if (employees[employeeAddresses[i]].employer == _employer && employees[employeeAddresses[i]].isActive) {
                 totalCost += employees[employeeAddresses[i]].salary;
             }
         }

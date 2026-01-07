@@ -28,7 +28,11 @@ interface IEmployeeRegistry {
 
     function getActiveEmployees() external view returns (address[] memory);
     
+    function getEmployerEmployees(address _employer) external view returns (address[] memory);
+    
     function getTotalMonthlyCost() external view returns (uint256);
+    
+    function getEmployerMonthlyCost(address _employer) external view returns (uint256);
     
     function isActiveEmployee(address _employee) external view returns (bool);
     

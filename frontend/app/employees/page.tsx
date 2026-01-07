@@ -22,8 +22,20 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Edit, UserX, UserCheck, Loader2 } from "lucide-react";
-import { useReadContract, useReadContracts, useWriteContract } from "wagmi";
+import {
+  Plus,
+  Edit,
+  UserX,
+  UserCheck,
+  Loader2,
+  ShieldCheck,
+} from "lucide-react";
+import {
+  useReadContract,
+  useReadContracts,
+  useWriteContract,
+  useAccount,
+} from "wagmi";
 import { formatUnits, parseUnits } from "viem";
 import EmployeeRegistryABI from "../../lib/abi/EmployeeRegistry.json";
 import type { Abi } from "viem";
@@ -31,7 +43,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { usePublicClient } from "wagmi";
 
 const EMPLOYEE_REGISTRY_ADDRESS =
-  "0x3899466Af78C1A72F80a203b3b85781eDf905B31" as const;
+  "0x20B3dB45a351E92673112064A3F01951115eD6B7" as const;
 
 // Type for formatted employee data
 interface EmployeeData {
@@ -43,6 +55,7 @@ interface EmployeeData {
 }
 
 export default function EmployeesPage() {
+  const { address } = useAccount();
   const queryClient = useQueryClient();
   const publicClient = usePublicClient();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -55,13 +68,31 @@ export default function EmployeesPage() {
     role: "",
   });
 
-  const { writeContract, isPending: isAddPending, data: addData } = useWriteContract();
-  const { writeContract: writeUpdateContract, isPending: isUpdatePending, data: updateData } =
-    useWriteContract();
-  const { writeContract: writeDeactivateContract, isPending: isDeactivatePending, data: deactivateData } =
-    useWriteContract();
-  const { writeContract: writeActivateContract, isPending: isActivatePending, data: activateData } =
-    useWriteContract();
+  const {
+    writeContract,
+    isPending: isAddPending,
+    data: addData,
+  } = useWriteContract();
+  const {
+    writeContract: writeUpdateContract,
+    isPending: isUpdatePending,
+    data: updateData,
+  } = useWriteContract();
+  const {
+    writeContract: writeDeactivateContract,
+    isPending: isDeactivatePending,
+    data: deactivateData,
+  } = useWriteContract();
+  const {
+    writeContract: writeActivateContract,
+    isPending: isActivatePending,
+    data: activateData,
+  } = useWriteContract();
+  const {
+    writeContract: writeRegisterContract,
+    isPending: isRegisterPending,
+    data: registerData,
+  } = useWriteContract();
 
   // Handle success callbacks
   useEffect(() => {
@@ -86,6 +117,12 @@ export default function EmployeesPage() {
     }
   }, [deactivateData, activateData, queryClient]);
 
+  useEffect(() => {
+    if (registerData) {
+      queryClient.invalidateQueries({ queryKey: ["readContract"] });
+    }
+  }, [registerData, queryClient]);
+
   /* ==================== READ CONTRACTS ==================== */
 
   // Get counts
@@ -101,14 +138,29 @@ export default function EmployeesPage() {
     functionName: "activeEmployees",
   });
 
+  const { data: isEmployer } = useReadContract({
+    address: EMPLOYEE_REGISTRY_ADDRESS,
+    abi: EmployeeRegistryABI.abi,
+    functionName: "isEmployer",
+    args: [address],
+    query: {
+      enabled: !!address,
+    },
+  });
+
   console.log("totalEmployees:", totalEmployees?.toString());
   console.log("activeEmployees:", activeEmployees?.toString());
+  console.log("isEmployer:", isEmployer);
 
-  // Get list of addresses
+  // Get list of addresses for current employer
   const { data: employeeAddresses } = useReadContract({
     address: EMPLOYEE_REGISTRY_ADDRESS,
     abi: EmployeeRegistryABI.abi,
-    functionName: "getActiveEmployees",
+    functionName: "getEmployerEmployees",
+    args: [address],
+    query: {
+      enabled: !!address && isEmployer === true,
+    },
   });
 
   // BATCH FETCH: Create array of calls for each employee
@@ -173,6 +225,18 @@ export default function EmployeesPage() {
       role: "",
     });
     setEditingEmployee(null);
+  };
+
+  const handleRegisterEmployer = () => {
+    if (!address) {
+      alert("Please connect your wallet first");
+      return;
+    }
+    writeRegisterContract({
+      address: EMPLOYEE_REGISTRY_ADDRESS,
+      abi: EmployeeRegistryABI.abi,
+      functionName: "registerAsEmployer",
+    });
   };
 
   const handleAddEmployee = () => {
@@ -267,98 +331,130 @@ export default function EmployeesPage() {
     <div className="p-4 md:p-8 bg-[#114277] min-h-screen">
       <div className="mb-6 md:mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-white">Employees</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-white">
+            Employees
+          </h1>
           <p className="text-gray-300 mt-2 text-sm md:text-base">
             Manage your team and their payroll settings
           </p>
           <div className="mt-3 md:mt-4 flex gap-4 text-sm text-gray-300">
-            <span>Total: {totalEmployees?.toString() ?? "0"}</span>
-            <span>Active: {activeEmployees?.toString() ?? "0"}</span>
+            <span>Your Employees: {employeeAddresses?.length ?? "0"}</span>
           </div>
         </div>
 
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2 w-full md:w-auto">
-              <Plus className="h-4 w-4" />
-              <span className="hidden md:inline">Add Employee</span>
-              <span className="md:hidden">Add</span>
+        <div className="flex gap-2">
+          {isEmployer === false && (
+            <Button
+              onClick={handleRegisterEmployer}
+              disabled={isRegisterPending}
+              variant="outline"
+              className="gap-2 w-full md:w-auto"
+            >
+              {isRegisterPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Registering...
+                </>
+              ) : (
+                <>
+                  <ShieldCheck className="h-4 w-4 text-black" />
+                  <span className="hidden md:inline text-black">
+                    Register as Employer
+                  </span>
+                  <span className="md:hidden text-black">Register</span>
+                </>
+              )}
             </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px] text-black">
-            <DialogHeader>
-              <DialogTitle>Add New Employee</DialogTitle>
-              <DialogDescription>
-                Add a new employee to your payroll system on-chain.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="name">Full Name</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  placeholder="Enter full name"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="address">Wallet Address</Label>
-                <Input
-                  id="address"
-                  value={formData.walletAddress}
-                  onChange={(e) =>
-                    setFormData({ ...formData, walletAddress: e.target.value })
-                  }
-                  placeholder="0x..."
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="role">Role/Position</Label>
-                <Input
-                  id="role"
-                  value={formData.role}
-                  onChange={(e) =>
-                    setFormData({ ...formData, role: e.target.value })
-                  }
-                  placeholder="e.g., Software Engineer"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="salary">Monthly Salary (USDC)</Label>
-                <Input
-                  id="salary"
-                  type="number"
-                  value={formData.salary}
-                  onChange={(e) =>
-                    setFormData({ ...formData, salary: e.target.value })
-                  }
-                  placeholder="5000"
-                />
-              </div>
-            </div>
-            <DialogFooter>
+          )}
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
               <Button
-                variant="outline"
-                onClick={() => setIsAddDialogOpen(false)}
+                className="gap-2 w-full md:w-auto"
+                disabled={isEmployer !== true}
               >
-                Cancel
+                <Plus className="h-4 w-4" />
+                <span className="hidden md:inline">Add Employee</span>
+                <span className="md:hidden">Add</span>
               </Button>
-              <Button onClick={handleAddEmployee} disabled={isAddPending}>
-                {isAddPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Adding...
-                  </>
-                ) : (
-                  "Add Employee"
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px] text-black">
+              <DialogHeader>
+                <DialogTitle>Add New Employee</DialogTitle>
+                <DialogDescription>
+                  Add a new employee to your payroll system on-chain.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
+                    placeholder="Enter full name"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="address">Wallet Address</Label>
+                  <Input
+                    id="address"
+                    value={formData.walletAddress}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        walletAddress: e.target.value,
+                      })
+                    }
+                    placeholder="0x..."
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="role">Role/Position</Label>
+                  <Input
+                    id="role"
+                    value={formData.role}
+                    onChange={(e) =>
+                      setFormData({ ...formData, role: e.target.value })
+                    }
+                    placeholder="e.g., Software Engineer"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="salary">Monthly Salary (USDC)</Label>
+                  <Input
+                    id="salary"
+                    type="number"
+                    value={formData.salary}
+                    onChange={(e) =>
+                      setFormData({ ...formData, salary: e.target.value })
+                    }
+                    placeholder="5000"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsAddDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button onClick={handleAddEmployee} disabled={isAddPending}>
+                  {isAddPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Adding...
+                    </>
+                  ) : (
+                    "Add Employee"
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <Card>
@@ -366,7 +462,24 @@ export default function EmployeesPage() {
           <CardTitle className="text-black">Employee List</CardTitle>
         </CardHeader>
         <CardContent>
-          {isTableLoading ? (
+          {!address ? (
+            <div className="text-center py-8 text-gray-500">
+              Please connect your wallet to view employees.
+            </div>
+          ) : isEmployer === false ? (
+            <div className="text-center py-8 text-gray-500">
+              <ShieldCheck className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+              <p className="mb-4">
+                Register as an employer to start managing your team.
+              </p>
+              <Button
+                onClick={handleRegisterEmployer}
+                disabled={isRegisterPending}
+              >
+                {isRegisterPending ? "Registering..." : "Register as Employer"}
+              </Button>
+            </div>
+          ) : isTableLoading ? (
             <div className="text-center py-8 text-gray-500">
               <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
               Loading employees...
@@ -381,11 +494,17 @@ export default function EmployeesPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="min-w-[120px]">Name</TableHead>
-                    <TableHead className="min-w-[100px]">Wallet Address</TableHead>
-                    <TableHead className="hidden md:table-cell min-w-[120px]">Role</TableHead>
+                    <TableHead className="min-w-[100px]">
+                      Wallet Address
+                    </TableHead>
+                    <TableHead className="hidden md:table-cell min-w-[120px]">
+                      Role
+                    </TableHead>
                     <TableHead className="min-w-[100px]">Salary</TableHead>
                     <TableHead className="min-w-[80px]">Status</TableHead>
-                    <TableHead className="text-right min-w-[120px]">Actions</TableHead>
+                    <TableHead className="text-right min-w-[120px]">
+                      Actions
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -394,14 +513,18 @@ export default function EmployeesPage() {
                       <TableCell className="font-medium">
                         <div className="flex flex-col">
                           <span>{employee.name}</span>
-                          <span className="md:hidden text-xs text-gray-500">{employee.role}</span>
+                          <span className="md:hidden text-xs text-gray-500">
+                            {employee.role}
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell className="font-mono text-xs">
                         {employee.address.slice(0, 6)}...
                         {employee.address.slice(-4)}
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">{employee.role}</TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {employee.role}
+                      </TableCell>
                       <TableCell className="whitespace-nowrap">
                         ${Number(employee.salary).toLocaleString()}
                       </TableCell>

@@ -1,27 +1,37 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   DollarSign,
   Users,
   Calendar,
   TrendingUp,
   ArrowUpRight,
+  ShieldCheck,
+  UserPlus,
+  Wallet,
 } from "lucide-react";
-import { useReadContract } from "wagmi";
+import { useReadContract, useAccount } from "wagmi";
 import formatBalance, { formatPayroll } from "@/utils/utils";
 import type { PayrollRun } from "@/types/contracts";
 import PayrollContractABi from "../../lib/abi/PayrollManager.json";
+import EmployeeRegistryABI from "../../lib/abi/EmployeeRegistry.json";
+import { useRouter } from "next/navigation";
 
 const PAYROLL_REGISTRY_ADDRESS =
-  "0xEc64E03F6A8a98f2250cDD04ad701D7686046654" as const;
+  "0x1739715A3452BF1e336305cf8f9542d177cEa03A" as const;
+const EMPLOYEE_REGISTRY_ADDRESS =
+  "0x20B3dB45a351E92673112064A3F01951115eD6B7" as const;
 
 export default function DashboardPage() {
-  // Get contract balance
-  const { data: contractBalance } = useReadContract({
+  const router = useRouter();
+  const { address } = useAccount();
+  // Get total contract balance (admin view)
+  const { data: totalContractBalance } = useReadContract({
     address: PAYROLL_REGISTRY_ADDRESS,
     abi: PayrollContractABi.abi,
-    functionName: "getBalance",
+    functionName: "getTotalBalance",
   });
 
   // Get current payroll ID
@@ -53,7 +63,11 @@ export default function DashboardPage() {
     address: PAYROLL_REGISTRY_ADDRESS,
     abi: PayrollContractABi.abi,
     functionName: "payrollRuns",
-    args: [currentPayrollId && typeof currentPayrollId === 'string' ? BigInt(currentPayrollId) - BigInt(1) : BigInt(0)],
+    args: [
+      currentPayrollId && typeof currentPayrollId === "string"
+        ? BigInt(currentPayrollId) - BigInt(1)
+        : BigInt(0),
+    ],
     query: {
       enabled: !!currentPayrollId && Number(currentPayrollId) > 1,
     },
@@ -63,15 +77,55 @@ export default function DashboardPage() {
     address: PAYROLL_REGISTRY_ADDRESS,
     abi: PayrollContractABi.abi,
     functionName: "payrollRuns",
-    args: [currentPayrollId && typeof currentPayrollId === 'string' ? BigInt(currentPayrollId) - BigInt(2) : BigInt(0)],
+    args: [
+      currentPayrollId && typeof currentPayrollId === "string"
+        ? BigInt(currentPayrollId) - BigInt(2)
+        : BigInt(0),
+    ],
     query: {
       enabled: !!currentPayrollId && Number(currentPayrollId) > 2,
     },
   });
 
-  const formattedContractBalance = formatBalance(contractBalance as bigint | undefined);
+  const formattedContractBalance = formatBalance(
+    totalContractBalance as bigint | undefined
+  );
 
-  
+  // Check if user is registered as employer
+  const { data: isEmployer } = useReadContract({
+    address: EMPLOYEE_REGISTRY_ADDRESS,
+    abi: EmployeeRegistryABI.abi,
+    functionName: "isEmployer",
+    args: [address as `0x${string}`],
+    query: {
+      enabled: !!address,
+    },
+  });
+
+  // Get employer's employee count
+  const { data: employerEmployees } = useReadContract({
+    address: EMPLOYEE_REGISTRY_ADDRESS,
+    abi: EmployeeRegistryABI.abi,
+    functionName: "getEmployerEmployees",
+    args: [address as `0x${string}`],
+    query: {
+      enabled: !!address && isEmployer === true,
+    },
+  });
+
+  // Get employer's balance
+  const { data: employerBalance } = useReadContract({
+    address: PAYROLL_REGISTRY_ADDRESS,
+    abi: PayrollContractABi.abi,
+    functionName: "getMyBalance",
+    query: {
+      enabled: !!address && isEmployer === true,
+    },
+  });
+
+  const formattedEmployerBalance = formatBalance(
+    employerBalance as bigint | undefined
+  );
 
   const recentPayrolls = [
     formatPayroll(payroll1 as PayrollRun | null),
@@ -90,89 +144,253 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Contract Balance
-            </CardTitle>
-            <DollarSign className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl md:text-2xl font-bold text-gray-900">
-              {formattedContractBalance}
+      {/* Getting Started Card - Show if not registered as employer */}
+      {address && isEmployer === false && (
+        <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200 gap-2">
+          <CardContent className="pt-6">
+            <div className="flex flex-col md:flex-row items-center gap-4">
+              <div className="flex-shrink-0">
+                <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center">
+                  <ShieldCheck className="h-8 w-8 text-blue-600" />
+                </div>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Get Started as an Employer
+                </h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Register as an employer to start managing payroll for your
+                  team. It only takes one transaction and costs ~$0.08.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    onClick={() => router.push("/employees")}
+                    className="gap-2 bg-blue-600 hover:bg-blue-700"
+                  >
+                    <ShieldCheck className="h-4 w-4" />
+                    Register as Employer
+                  </Button>
+                  <Button
+                    onClick={() => router.push("/employees")}
+                    variant="outline"
+                    className="gap-2 text-black"
+                  >
+                    <UserPlus className="h-4 w-4" />
+                    Manage Employees
+                  </Button>
+                  <Button
+                    onClick={() => router.push("/payroll")}
+                    variant="outline"
+                    className="gap-2 text-black"
+                  >
+                    <Wallet className="h-4 w-4" />
+                    Fund Payroll
+                  </Button>
+                </div>
+              </div>
             </div>
-            <p className="text-xs text-gray-500 mt-1">Available for payroll</p>
           </CardContent>
         </Card>
+      )}
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs md:text-sm font-medium text-gray-600">
-              Total Payroll Runs
-            </CardTitle>
-            <Users className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl md:text-2xl font-bold text-gray-900">
-              {totalPayrollRuns?.toString() ?? "0"}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">All time executions</p>
-          </CardContent>
-        </Card>
+      {/* Stats Cards - Show employer-specific stats if registered */}
+      {isEmployer === true ? (
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Your Balance
+              </CardTitle>
+              <DollarSign className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl md:text-2xl font-bold text-gray-900">
+                {formattedEmployerBalance}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Available for payroll
+              </p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs md:text-sm font-medium text-gray-600">
-              Last Payroll Amount
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-indigo-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl md:text-2xl font-bold text-gray-900">
-              $
-              {lastPayroll
-                ? lastPayroll.amount.toLocaleString("en-US", {
-                    minimumFractionDigits: 2,
-                  })
-                : "0.00"}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              {lastPayroll?.employees ?? 0} employees paid
-            </p>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs md:text-sm font-medium text-gray-600">
+                Your Employees
+              </CardTitle>
+              <Users className="h-4 w-4 text-blue-600" />
+            </CardHeader>
+             <CardContent>
+               <div className="text-xl md:text-2xl font-bold text-gray-900">
+                 {Array.isArray(employerEmployees) ? employerEmployees.length : 0}
+               </div>
+               <p className="text-xs text-gray-500 mt-1">Active team members</p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs md:text-sm font-medium text-gray-600">
-              Last Payroll Date
-            </CardTitle>
-            <Calendar className="h-4 w-4 text-purple-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl md:text-2xl font-bold text-gray-900">
-              {lastPayroll
-                ? lastPayroll.date.toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                  })
-                : "N/A"}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              {lastPayroll
-                ? lastPayroll.date.toLocaleDateString("en-US", {
-                    year: "numeric",
-                  })
-                : "No payrolls yet"}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs md:text-sm font-medium text-gray-600">
+                Total Payroll Runs
+              </CardTitle>
+              <Users className="h-4 w-4 text-blue-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl md:text-2xl font-bold text-gray-900">
+                {totalPayrollRuns?.toString() ?? "0"}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">All time executions</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs md:text-sm font-medium text-gray-600">
+                Last Payroll Amount
+              </CardTitle>
+              <TrendingUp className="h-4 w-4 text-indigo-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl md:text-2xl font-bold text-gray-900">
+                $
+                {lastPayroll
+                  ? lastPayroll.amount.toLocaleString("en-US", {
+                      minimumFractionDigits: 2,
+                    })
+                  : "0.00"}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                {lastPayroll?.employees ?? 0} employees paid
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs md:text-sm font-medium text-gray-600">
+                Last Payroll Date
+              </CardTitle>
+              <Calendar className="h-4 w-4 text-purple-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl md:text-2xl font-bold text-gray-900">
+                {lastPayroll
+                  ? lastPayroll.date.toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    })
+                  : "N/A"}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                {lastPayroll
+                  ? lastPayroll.date.toLocaleDateString("en-US", {
+                      year: "numeric",
+                    })
+                  : "No payrolls yet"}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg text-black font-semibold">
+                Recent Payroll Runs
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {recentPayrolls.length === 0 ? (
+                <div className="text-center py-4 text-gray-500">
+                  No payroll runs yet
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {recentPayrolls.map((payroll, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between py-2 border-b last:border-0"
+                    >
+                      <div className="flex items-center gap-3">
+                        <ArrowUpRight className="h-4 w-4 text-red-600" />
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            Monthly Payroll
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {payroll?.date.toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-medium text-red-600">
+                          -$
+                          {payroll?.amount.toLocaleString("en-US", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </span>
+                        <p className="text-xs text-gray-500">
+                          {payroll?.employees} employees
+                        </p>
+                        {payroll?.completed && (
+                          <p className="text-xs text-green-600">✓ Completed</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold">
+                System Status
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600">Arc Network Connection</span>
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    Connected
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600">Smart Contract Status</span>
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    Active
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600">Current Payroll ID</span>
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    #{currentPayrollId?.toString() ?? "0"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600">Funds Available</span>
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    {totalContractBalance &&
+                    (totalContractBalance as bigint) > 0n
+                      ? "Sufficient"
+                      : "Low"}
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-4">
         <Card>
           <CardHeader>
             <CardTitle className="text-lg text-black font-semibold">
@@ -198,14 +416,11 @@ export default function DashboardPage() {
                           Monthly Payroll
                         </p>
                         <p className="text-sm text-gray-500">
-                          {payroll?.date.toLocaleDateString(
-                            "en-US",
-                            {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            }
-                          )}
+                          {payroll?.date.toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
                         </p>
                       </div>
                     </div>
@@ -260,7 +475,7 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between">
                 <span className="text-gray-600">Funds Available</span>
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  {contractBalance && (contractBalance as bigint) > 0n
+                  {totalContractBalance && (totalContractBalance as bigint) > 0n
                     ? "Sufficient"
                     : "Low"}
                 </span>

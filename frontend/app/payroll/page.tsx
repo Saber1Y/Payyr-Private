@@ -32,9 +32,9 @@ import EmployeeRegistryABI from "../../lib/abi/EmployeeRegistry.json";
 import { usePrivy } from "@privy-io/react-auth";
 
 const EMPLOYEE_REGISTRY_ADDRESS =
-  "0x3899466Af78C1A72F80a203b3b85781eDf905B31" as const;
+  "0x20B3dB45a351E92673112064A3F01951115eD6B7" as const;
 const PAYROLL_REGISTRY_ADDRESS =
-  "0xEc64E03F6A8a98f2250cDD04ad701D7686046654" as const;
+  "0x1739715A3452BF1e336305cf8f9542d177cEa03A" as const;
 
 const ARC_USDC_ADDR = "0x3600000000000000000000000000000000000000" as const;
 
@@ -58,11 +58,14 @@ export default function PayrollPage() {
     query: { enabled: !!address },
   });
 
-  // Contract's USDC balance
-  const { data: contractBalance } = useReadContract({
+  // Employer's USDC balance in contract
+  const { data: employerBalance } = useReadContract({
     address: PAYROLL_REGISTRY_ADDRESS,
     abi: PayrollContractABi.abi,
-    functionName: "getBalance",
+    functionName: "getMyBalance",
+    query: {
+      enabled: !!address,
+    },
   });
 
   // Current payroll ID
@@ -72,18 +75,37 @@ export default function PayrollPage() {
     functionName: "currentPayrollId",
   });
 
-  // Total monthly cost - FIXED FUNCTION NAME
+  // Employer's total monthly cost
   const { data: monthlyPayrollCost } = useReadContract({
     address: EMPLOYEE_REGISTRY_ADDRESS,
     abi: EmployeeRegistryABI.abi,
-    functionName: "getTotalMonthlyCost",
+    functionName: "getEmployerMonthlyCost",
+    args: [address as `0x${string}`],
+    query: {
+      enabled: !!address,
+    },
   });
 
-  // Active employees count
-  const { data: activeEmployees } = useReadContract({
+  // Employer's active employees count
+  const { data: employerEmployees } = useReadContract({
     address: EMPLOYEE_REGISTRY_ADDRESS,
     abi: EmployeeRegistryABI.abi,
-    functionName: "activeEmployees",
+    functionName: "getEmployerEmployees",
+    args: [address as `0x${string}`],
+    query: {
+      enabled: !!address,
+    },
+  });
+
+  // Check if user is employer
+  const { data: isEmployer } = useReadContract({
+    address: EMPLOYEE_REGISTRY_ADDRESS,
+    abi: EmployeeRegistryABI.abi,
+    functionName: "isEmployer",
+    args: [address as `0x${string}`],
+    query: {
+      enabled: !!address,
+    },
   });
 
   // Fetch last 3 payroll runs
@@ -127,6 +149,7 @@ export default function PayrollPage() {
     if (!data) return null;
     const payrollData = data as {
       id: bigint;
+      employer: bigint;
       timestamp: bigint;
       totalAmount: bigint;
       employeeCount: bigint;
@@ -141,12 +164,16 @@ export default function PayrollPage() {
     };
   };
 
-  const formattedMonthlyBalance = formatBalance(monthlyPayrollCost as bigint | undefined);
+  const formattedMonthlyBalance = formatBalance(
+    monthlyPayrollCost as bigint | undefined
+  );
   const formattedUserBalance = formatBalance(userBalance as bigint | undefined);
-  const formattedContractBalance = formatBalance(contractBalance as bigint | undefined);
+  const formattedEmployerBalance = formatBalance(
+    employerBalance as bigint | undefined
+  );
 
   const hasSufficientFunds =
-    formattedContractBalance >= formattedMonthlyBalance;
+    formattedEmployerBalance >= formattedMonthlyBalance;
 
   const history = [
     formatPayrollData(payrollHistory1),
@@ -154,9 +181,33 @@ export default function PayrollPage() {
     formatPayrollData(payrollHistory3),
   ].filter((item): item is NonNullable<typeof item> => item !== null);
 
-
   if (!authenticated) {
     return <div>Please Login to check balance</div>;
+  }
+
+  if (isEmployer === false) {
+    return (
+      <div className="p-4 md:p-8 bg-[#114277] min-h-screen">
+        <div className="max-w-md mx-auto mt-8">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-black">Register as Employer</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600 mb-4">
+                You need to register as an employer to manage payroll.
+              </p>
+              <Button
+                className="w-full gap-2"
+                onClick={() => (window.location.href = "/employees")}
+              >
+                Go to Employees Page
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
   }
 
   /* ==================== HANDLERS ==================== */
@@ -240,19 +291,19 @@ export default function PayrollPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">
-              Contract Balance
+              Your Balance
             </CardTitle>
             <Wallet className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900">
-              ${}
-              {formattedContractBalance.toLocaleString(undefined, {
+              $
+              {formattedEmployerBalance.toLocaleString(undefined, {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
               })}
             </div>
-            <p className="text-xs text-gray-500 mt-1">Available</p>
+            <p className="text-xs text-gray-500 mt-1">Available for payroll</p>
           </CardContent>
         </Card>
 
@@ -272,7 +323,7 @@ export default function PayrollPage() {
               })}
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              {activeEmployees?.toString() ?? "0"} employees
+              {employerEmployees?.length ?? "0"} employees
             </p>
           </CardContent>
         </Card>
@@ -343,7 +394,7 @@ export default function PayrollPage() {
                   </div>
                   <div className="text-gray-600">
                     Contract balance: $
-                    {formattedContractBalance.toLocaleString()}
+                    {formattedEmployerBalance.toLocaleString()}
                   </div>
                 </div>
                 <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
@@ -451,14 +502,18 @@ export default function PayrollPage() {
                     <TableHead className="min-w-[60px]">Run #</TableHead>
                     <TableHead className="min-w-[100px]">Date</TableHead>
                     <TableHead className="min-w-[70px]">Employees</TableHead>
-                    <TableHead className="min-w-[100px]">Total Amount</TableHead>
+                    <TableHead className="min-w-[100px]">
+                      Total Amount
+                    </TableHead>
                     <TableHead className="min-w-[80px]">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {history.map((record) => (
                     <TableRow key={record!.id}>
-                      <TableCell className="font-medium">#{record!.id}</TableCell>
+                      <TableCell className="font-medium">
+                        #{record!.id}
+                      </TableCell>
                       <TableCell className="whitespace-nowrap">
                         {record!.date.toLocaleDateString("en-US", {
                           month: "short",

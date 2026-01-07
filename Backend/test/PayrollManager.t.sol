@@ -12,6 +12,7 @@ contract PayrollManagerTest is Test {
     MockUSDC public usdc;
     
     address public admin = makeAddr("admin");
+    address public employer2 = makeAddr("employer2");
     address public employee1 = makeAddr("employee1");
     address public employee2 = makeAddr("employee2");
     
@@ -59,13 +60,13 @@ contract PayrollManagerTest is Test {
         payrollManager.depositPayroll(depositAmount);
         vm.stopPrank();
         
-        assertEq(payrollManager.getBalance(), depositAmount);
+        assertEq(payrollManager.getEmployerBalance(admin), depositAmount);
     }
 
     function testExecutePayroll() public {
         uint256 totalSalaries = EMPLOYEE1_SALARY + EMPLOYEE2_SALARY;
         
-        // Fund the payroll contract
+        // Fund payroll contract
         usdc.mint(admin, totalSalaries);
         
         vm.startPrank(admin);
@@ -79,7 +80,7 @@ contract PayrollManagerTest is Test {
         // Check employee balances
         assertEq(usdc.balanceOf(employee1), EMPLOYEE1_SALARY);
         assertEq(usdc.balanceOf(employee2), EMPLOYEE2_SALARY);
-        assertEq(payrollManager.getBalance(), 0);
+        assertEq(payrollManager.getEmployerBalance(admin), 0);
     }
 
     function testCannotExecutePayrollWithInsufficientFunds() public {
@@ -99,12 +100,12 @@ contract PayrollManagerTest is Test {
         assertTrue(employeeRegistry.isActiveEmployee(employee2));
     }
 
-    function testOnlyAdminCanDeposit() public {
+    function testOnlyEmployerCanDeposit() public {
         vm.expectRevert();
         payrollManager.depositPayroll(1000 * 1e6);
     }
 
-    function testOnlyOperatorCanExecutePayroll() public {
+    function testOnlyEmployerCanExecutePayroll() public {
         vm.prank(employee1);
         vm.expectRevert();
         payrollManager.executePayroll();

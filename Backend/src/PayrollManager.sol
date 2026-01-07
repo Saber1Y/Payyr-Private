@@ -15,28 +15,32 @@ import "./interfaces/IERC20.sol";
 contract PayrollManager is AccessControl, ReentrancyGuard, Pausable {
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant PAYROLL_OPERATOR_ROLE = keccak256("PAYROLL_OPERATOR_ROLE");
+    bytes32 public constant HR_ROLE = keccak256("HR_ROLE");
 
     IERC20 public immutable usdc;
     IEmployeeRegistry public employeeRegistry;
 
     struct PayrollRun {
         uint256 id;
+        address employer;
         uint256 timestamp;
         uint256 totalAmount;
         uint256 employeeCount;
-        bytes32 merkleRoot; // For batch payments
+        bytes32 merkleRoot;
         bool isCompleted;
     }
 
     mapping(uint256 => PayrollRun) public payrollRuns;
     mapping(uint256 => mapping(address => bool)) public payrollClaims;
+    mapping(address => uint256) public employerBalances;
     
     uint256 public currentPayrollId;
     uint256 public totalPayrollRuns;
 
-    event PayrollDeposited(address indexed depositor, uint256 amount);
-    event PayrollExecuted(uint256 indexed payrollId, uint256 totalAmount, uint256 employeeCount);
+    event PayrollDeposited(address indexed employer, uint256 amount);
+    event PayrollExecuted(uint256 indexed payrollId, address indexed employer, uint256 totalAmount, uint256 employeeCount);
     event PayrollClaimed(uint256 indexed payrollId, address indexed employee, uint256 amount);
+    event EmployerWithdrawn(address indexed employer, uint256 amount);
     event EmergencyWithdraw(address indexed admin, uint256 amount);
 
     error InsufficientBalance();
@@ -55,27 +59,32 @@ contract PayrollManager is AccessControl, ReentrancyGuard, Pausable {
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         _grantRole(ADMIN_ROLE, _admin);
         _grantRole(PAYROLL_OPERATOR_ROLE, _admin);
+        _grantRole(HR_ROLE, _admin);
     }
 
     /**
-     * @dev Deposit USDC into the payroll contract
+     * @dev Deposit USDC into the payroll contract (for employers)
      * @param amount Amount of USDC to deposit
      */
-    function depositPayroll(uint256 amount) external onlyRole(ADMIN_ROLE) {
+    function depositPayroll(uint256 amount) external onlyRole(HR_ROLE) {
         require(amount > 0, "Amount must be greater than 0");
         
         bool success = usdc.transferFrom(msg.sender, address(this), amount);
         require(success, "USDC transfer failed");
         
+        employerBalances[msg.sender] += amount;
+        
         emit PayrollDeposited(msg.sender, amount);
     }
 
     /**
-     * @dev Execute payroll for all active employees
+     * @dev Execute payroll for calling employer's employees
      */
-    function executePayroll() external onlyRole(PAYROLL_OPERATOR_ROLE) whenNotPaused nonReentrant {
-        address[] memory employees = employeeRegistry.getActiveEmployees();
+    function executePayroll() external onlyRole(HR_ROLE) whenNotPaused nonReentrant {
+        address[] memory employees = employeeRegistry.getEmployerEmployees(msg.sender);
         uint256 totalAmount = 0;
+        
+        require(employees.length > 0, "No employees found for employer");
         
         // Calculate total payroll amount
         for (uint256 i = 0; i < employees.length; i++) {
@@ -85,19 +94,18 @@ contract PayrollManager is AccessControl, ReentrancyGuard, Pausable {
             }
         }
         
-        if (usdc.balanceOf(address(this)) < totalAmount) {
-            revert InsufficientBalance();
-        }
+        require(employerBalances[msg.sender] >= totalAmount, "Insufficient employer balance");
 
         currentPayrollId++;
         totalPayrollRuns++;
 
         payrollRuns[currentPayrollId] = PayrollRun({
             id: currentPayrollId,
+            employer: msg.sender,
             timestamp: block.timestamp,
             totalAmount: totalAmount,
             employeeCount: employees.length,
-            merkleRoot: bytes32(0), // Simple direct payment for now
+            merkleRoot: bytes32(0),
             isCompleted: false
         });
 
@@ -115,22 +123,55 @@ contract PayrollManager is AccessControl, ReentrancyGuard, Pausable {
             }
         }
 
+        employerBalances[msg.sender] -= totalAmount;
         payrollRuns[currentPayrollId].isCompleted = true;
-        emit PayrollExecuted(currentPayrollId, totalAmount, employees.length);
+        emit PayrollExecuted(currentPayrollId, msg.sender, totalAmount, employees.length);
     }
 
     /**
-     * @dev Get contract USDC balance
+     * @dev Get employer's USDC balance
      */
-    
-    function getBalance() external view returns (uint256) {
+    function getEmployerBalance(address _employer) external view returns (uint256) {
+        return employerBalances[_employer];
+    }
+
+    /**
+     * @dev Get contract's total USDC balance (admin view)
+     */
+    function getTotalBalance() external view returns (uint256) {
         return usdc.balanceOf(address(this));
+    }
+
+    /**
+     * @dev Get own employer balance
+     */
+    function getMyBalance() external view returns (uint256) {
+        return employerBalances[msg.sender];
+    }
+
+    /**
+     * @dev Employer can withdraw their remaining balance
+     * @param amount Amount to withdraw
+     */
+    function withdrawEmployerBalance(uint256 amount) external onlyRole(HR_ROLE) {
+        require(amount > 0, "Amount must be greater than 0");
+        require(employerBalances[msg.sender] >= amount, "Insufficient balance");
+        
+        employerBalances[msg.sender] -= amount;
+        
+        bool success = usdc.transfer(msg.sender, amount);
+        require(success, "Withdraw failed");
+        
+        emit EmployerWithdrawn(msg.sender, amount);
     }
 
     /**
      * @dev Emergency withdraw - only admin
      */
     function emergencyWithdraw(uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(amount > 0, "Amount must be greater than 0");
+        require(usdc.balanceOf(address(this)) >= amount, "Insufficient contract balance");
+        
         bool success = usdc.transfer(msg.sender, amount);
         require(success, "Emergency withdraw failed");
         
@@ -166,5 +207,6 @@ contract PayrollManager is AccessControl, ReentrancyGuard, Pausable {
         require(_newAdmin != address(0), "Invalid admin address");
         _grantRole(ADMIN_ROLE, _newAdmin);
         _grantRole(PAYROLL_OPERATOR_ROLE, _newAdmin);
+        _grantRole(HR_ROLE, _newAdmin);
     }
 }

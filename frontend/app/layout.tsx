@@ -26,15 +26,7 @@ export default function RootLayout({
       <body className={`${sora.variable} antialiased bg-gray-50`}>
         <WagmiProviders>
           <Providers>
-            <div className="flex h-screen">
-              <Sidebar />
-              <div className="flex flex-1 flex-col overflow-hidden">
-                <Navbar />
-                <main className="flex-1 overflow-x-hidden overflow-y-auto bg-[#114277]">
-                  {children}
-                </main>
-              </div>
-            </div>
+            {children}
           </Providers>
         </WagmiProviders>
       </body>

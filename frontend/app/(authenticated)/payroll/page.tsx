@@ -25,9 +25,9 @@ import {
 import { Wallet, Send, AlertCircle, CheckCircle, Loader2 } from "lucide-react";
 import { useReadContract, useWriteContract } from "wagmi";
 import formatBalance from "@/utils/utils";
-import USDCABI from "../../lib/abi/USDC.json";
-import PayrollContractABi from "../../lib/abi/PayrollManager.json";
-import EmployeeRegistryABI from "../../lib/abi/EmployeeRegistry.json";
+import USDCABI from "../../../lib/abi/USDC.json";
+import PayrollContractABi from "../../../lib/abi/PayrollManager.json";
+import EmployeeRegistryABI from "../../../lib/abi/EmployeeRegistry.json";
 
 import { usePrivy } from "@privy-io/react-auth";
 

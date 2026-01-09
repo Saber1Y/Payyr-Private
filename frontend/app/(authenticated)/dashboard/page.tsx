@@ -15,8 +15,8 @@ import {
 import { useReadContract, useAccount } from "wagmi";
 import formatBalance, { formatPayroll } from "@/utils/utils";
 import type { PayrollRun } from "@/types/contracts";
-import PayrollContractABi from "../../lib/abi/PayrollManager.json";
-import EmployeeRegistryABI from "../../lib/abi/EmployeeRegistry.json";
+import PayrollContractABi from "../../../lib/abi/PayrollManager.json";
+import EmployeeRegistryABI from "../../../lib/abi/EmployeeRegistry.json";
 import { useRouter } from "next/navigation";
 
 const PAYROLL_REGISTRY_ADDRESS =

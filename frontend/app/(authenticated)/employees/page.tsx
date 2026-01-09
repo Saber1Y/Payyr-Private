@@ -37,7 +37,7 @@ import {
   useAccount,
 } from "wagmi";
 import { formatUnits, parseUnits } from "viem";
-import EmployeeRegistryABI from "../../lib/abi/EmployeeRegistry.json";
+import EmployeeRegistryABI from "../../../lib/abi/EmployeeRegistry.json";
 import type { Abi } from "viem";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePublicClient } from "wagmi";

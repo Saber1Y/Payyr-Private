@@ -208,21 +208,21 @@ export default function PayrollPage() {
   );
   const formattedAllowance = formatBalance(allowance as bigint | undefined);
 
-  console.log("Payroll Debug:", {
-    employerBalance,
-    formattedEmployerBalance,
-    monthlyPayrollCost: monthlyPayrollCost?.toString(),
-    formattedMonthlyBalance,
-    userBalance,
-    formattedUserBalance,
-    allowance: allowance?.toString(),
-    formattedAllowance,
-    totalContractBalance,
-    displayBalance,
-    isAdmin: address === "0x11f7eaC93C9DD552DFD657BE52007A25E200f356",
-    isUsingTotalBalance:
-      address === "0x11f7eaC93C9DD552DFD657BE52007A25E200f356",
-  });
+  // console.log("Payroll Debug:", {
+  //   employerBalance,
+  //   formattedEmployerBalance,
+  //   monthlyPayrollCost: monthlyPayrollCost?.toString(),
+  //   formattedMonthlyBalance,
+  //   userBalance,
+  //   formattedUserBalance,
+  //   allowance: allowance?.toString(),
+  //   formattedAllowance,
+  //   totalContractBalance,
+  //   displayBalance,
+  //   isAdmin: address === "0x11f7eaC93C9DD552DFD657BE52007A25E200f356",
+  //   isUsingTotalBalance:
+  //     address === "0x11f7eaC93C9DD552DFD657BE52007A25E200f356",
+  // });
 
   const hasSufficientFunds = displayBalance >= formattedMonthlyBalance;
 
@@ -380,7 +380,8 @@ export default function PayrollPage() {
               })}
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              {employerEmployees?.length ?? "0"} employees
+              {Array.isArray(employerEmployees) ? employerEmployees.length : 0}{" "}
+              employees
             </p>
           </CardContent>
         </Card>

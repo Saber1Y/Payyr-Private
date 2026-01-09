@@ -87,10 +87,6 @@ export default function DashboardPage() {
     },
   });
 
-  const formattedContractBalance = formatBalance(
-    totalContractBalance as bigint | undefined
-  );
-
   // Check if user is registered as employer
   const { data: isEmployer } = useReadContract({
     address: EMPLOYEE_REGISTRY_ADDRESS,
@@ -129,15 +125,11 @@ export default function DashboardPage() {
     functionName: "getTotalBalance",
   });
 
-  const displayBalance: bigint = (totalContractBalance ??
+  const displayBalance: bigint = (totalContractBalances ??
     employerBalance ??
     0n) as bigint;
 
   const formattedDisplayBalance = formatBalance(displayBalance);
-
-  const formattedEmployerBalance = formatBalance(
-    employerBalance as bigint | undefined
-  );
 
   const recentPayrolls = [
     formatPayroll(payroll1 as PayrollRun | null),

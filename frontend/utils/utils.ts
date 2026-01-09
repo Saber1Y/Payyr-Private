@@ -6,7 +6,7 @@ export default function formatBalance(balance: bigint | undefined): number {
   return Number(formatUnits(balance, 6));
 }
 
-export function formatPayroll(payroll: PayrollRun | null | undefined): {
+export function formatPayroll(payroll: unknown): {
   id: number;
   date: Date;
   amount: number;
@@ -15,11 +15,23 @@ export function formatPayroll(payroll: PayrollRun | null | undefined): {
 } | null {
   if (!payroll) return null;
 
+  const payrollTuple = payroll as [
+    bigint,
+    string,
+    bigint,
+    bigint,
+    bigint,
+    string,
+    boolean
+  ];
+
+  const [id, employer, timestamp, totalAmount, employeeCount, merkleRoot, isCompleted] = payrollTuple;
+
   return {
-    id: payroll.id,
-    date: new Date(payroll.timestamp),
-    amount: Number(formatUnits(payroll.totalAmount, 6)),
-    employees: payroll.employeeCount,
-    completed: payroll.isCompleted,
+    id: Number(id),
+    date: new Date(Number(timestamp) * 1000),
+    amount: Number(formatUnits(totalAmount, 6)),
+    employees: Number(employeeCount),
+    completed: isCompleted,
   };
 }

@@ -123,6 +123,18 @@ export default function DashboardPage() {
     },
   });
 
+  const { data: totalContractBalances } = useReadContract({
+    address: PAYROLL_REGISTRY_ADDRESS,
+    abi: PayrollContractABi.abi,
+    functionName: "getTotalBalance",
+  });
+
+  const displayBalance: bigint = (totalContractBalance ??
+    employerBalance ??
+    0n) as bigint;
+
+  const formattedDisplayBalance = formatBalance(displayBalance);
+
   const formattedEmployerBalance = formatBalance(
     employerBalance as bigint | undefined
   );
@@ -204,11 +216,17 @@ export default function DashboardPage() {
               <DollarSign className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-xl md:text-2xl font-bold text-gray-900">
-                {formattedEmployerBalance}
+              <div className="text-2xl font-bold text-gray-900">
+                $
+                {formattedDisplayBalance.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                Available for payroll
+                {address === "0x11f7eaC93C9DD552DFD657BE52007A25E200f356"
+                  ? "Total in contract"
+                  : "Available for payroll"}
               </p>
             </CardContent>
           </Card>
@@ -220,11 +238,13 @@ export default function DashboardPage() {
               </CardTitle>
               <Users className="h-4 w-4 text-blue-600" />
             </CardHeader>
-             <CardContent>
-               <div className="text-xl md:text-2xl font-bold text-gray-900">
-                 {Array.isArray(employerEmployees) ? employerEmployees.length : 0}
-               </div>
-               <p className="text-xs text-gray-500 mt-1">Active team members</p>
+            <CardContent>
+              <div className="text-xl md:text-2xl font-bold text-gray-900">
+                {Array.isArray(employerEmployees)
+                  ? employerEmployees.length
+                  : 0}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Active team members</p>
             </CardContent>
           </Card>
 
@@ -350,7 +370,7 @@ export default function DashboardPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg font-semibold">
+              <CardTitle className="text-lg font-semibold text-black">
                 System Status
               </CardTitle>
             </CardHeader>

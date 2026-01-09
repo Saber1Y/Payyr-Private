@@ -224,8 +224,7 @@ export default function PayrollPage() {
       address === "0x11f7eaC93C9DD552DFD657BE52007A25E200f356",
   });
 
-  const hasSufficientFunds =
-    monthlyPayrollCost !== undefined && displayBalance >= monthlyPayrollCost;
+  const hasSufficientFunds = displayBalance >= formattedMonthlyBalance;
 
   const history = [
     formatPayrollData(payrollHistory1),

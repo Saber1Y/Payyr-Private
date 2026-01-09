@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { Sora } from "next/font/google";
 import "./globals.css";
-import { Sidebar } from "@/components/sidebar";
-import { Navbar } from "@/components/navbar";
 import { Providers } from "@/components/providers";
 import { WagmiProviders } from "@/config/WagmiProviders";
 

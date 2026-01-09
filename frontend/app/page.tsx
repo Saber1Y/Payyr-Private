@@ -1,9 +1,7 @@
 "use client";
 
-export const dynamic = "force-dynamic";
-
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,14 +18,15 @@ import {
 
 export default function Home() {
   const router = useRouter();
+  const pathname = usePathname();
   const { ready, authenticated, login } = usePrivy();
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (ready && authenticated) {
+    if (ready && authenticated && pathname === "/") {
       router.push("/dashboard");
     }
-  }, [ready, authenticated, router]);
+  }, [ready, authenticated, pathname, router]);
 
   const handleLogin = async () => {
     setIsLoading(true);

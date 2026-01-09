@@ -10,10 +10,9 @@ import {
   Settings,
   DollarSign,
   PanelRight,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { usePrivy } from "@privy-io/react-auth";
 
 const navigation = [
   {
@@ -41,6 +40,13 @@ const navigation = [
 export function Sidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(true);
+  const { authenticated } = usePrivy();
+
+  const handleNavClick = (e: React.MouseEvent, href: string) => {
+    if (!authenticated) {
+      e.preventDefault();
+    }
+  };
 
   return (
     <div
@@ -76,15 +82,19 @@ export function Sidebar() {
       <nav className="flex-1 space-y-1 px-4 py-4">
         {navigation.map((item) => {
           const isActive = pathname === item.href;
+          const isDisabled = !authenticated && item.href !== "/";
           return (
             <Link
               key={item.name}
               href={item.href}
               title={!isOpen ? item.name : undefined}
+              onClick={(e) => handleNavClick(e, item.href)}
               className={cn(
                 "group flex items-center px-2 py-2 text-sm font-medium rounded-lg transition-colors relative",
                 isActive
                   ? "bg-indigo-50 text-indigo-700"
+                  : isDisabled
+                  ? "text-gray-400 cursor-not-allowed"
                   : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
                 !isOpen && "justify-center"
               )}
@@ -95,6 +105,8 @@ export function Sidebar() {
                   isOpen && "mr-4",
                   isActive
                     ? "text-indigo-500"
+                    : isDisabled
+                    ? "text-gray-300"
                     : "text-gray-400 group-hover:text-gray-500"
                 )}
               />

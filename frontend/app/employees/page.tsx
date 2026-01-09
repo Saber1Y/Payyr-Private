@@ -41,6 +41,7 @@ import EmployeeRegistryABI from "../../lib/abi/EmployeeRegistry.json";
 import type { Abi } from "viem";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePublicClient } from "wagmi";
+import { resumeToPipeableStream } from "react-dom/server";
 
 const EMPLOYEE_REGISTRY_ADDRESS =
   "0x20B3dB45a351E92673112064A3F01951115eD6B7" as const;
@@ -57,7 +58,7 @@ interface EmployeeData {
 export default function EmployeesPage() {
   const { address } = useAccount();
   const queryClient = useQueryClient();
-  const publicClient = usePublicClient();
+  // const publicClient = usePublicClient();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<string | null>(null);
@@ -188,9 +189,8 @@ export default function EmployeesPage() {
           return null;
         }
 
-        // Destructure the struct returned from Solidity
-        // Solidity returns: (string name, uint256 salary, bool isActive, uint256 startDate, string role)
-        const [name, salary, isActive, startDate, role] = res.result as [
+        const [employer, name, salary, isActive, startDate, role] = res.result as [
+          string,
           string,
           bigint,
           boolean,
@@ -204,6 +204,16 @@ export default function EmployeesPage() {
           isActive,
           role,
         });
+
+        console.log(res.result);
+
+        console.log("Reformated Data", {
+          address: (employeeAddresses as string[])[index],
+          name,
+          salary: formatUnits(salary, 6),
+          isActive,
+          role,
+        })
 
         return {
           address: (employeeAddresses as string[])[index],
@@ -338,7 +348,7 @@ export default function EmployeesPage() {
             Manage your team and their payroll settings
           </p>
           <div className="mt-3 md:mt-4 flex gap-4 text-sm text-gray-300">
-            <span>Your Employees: {employeeAddresses?.length ?? "0"}</span>
+            <span>Your Employees: {Array.isArray(employeeAddresses) ? employeeAddresses.length : 0}</span>
           </div>
         </div>
 

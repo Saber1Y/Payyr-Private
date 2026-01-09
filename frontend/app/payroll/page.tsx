@@ -58,15 +58,38 @@ export default function PayrollPage() {
     query: { enabled: !!address },
   });
 
+  // Check USDC allowance to payroll contract
+  const { data: allowance } = useReadContract({
+    address: ARC_USDC_ADDR,
+    abi: USDCABI,
+    functionName: "allowance",
+    args: [address as `0x${string}`, PAYROLL_REGISTRY_ADDRESS],
+    chainId: 5042002,
+    query: { enabled: !!address },
+  });
+
+  // Get contract total balance (for admin/deployer)
+  const { data: totalContractBalance } = useReadContract({
+    address: PAYROLL_REGISTRY_ADDRESS,
+    abi: PayrollContractABi.abi,
+    functionName: "getTotalBalance",
+  });
+
   // Employer's USDC balance in contract
   const { data: employerBalance } = useReadContract({
     address: PAYROLL_REGISTRY_ADDRESS,
     abi: PayrollContractABi.abi,
     functionName: "getMyBalance",
     query: {
-      enabled: !!address,
+      enabled:
+        !!address && address !== "0x11f7eaC93C9DD552DFD657BE52007A25E200f356",
     },
   });
+
+  // Display balance: employer balance for regular users, total balance for admin
+  const displayBalance: bigint = (totalContractBalance ?? employerBalance ?? 0n) as bigint;
+
+  const formattedDisplayBalance = formatBalance(displayBalance);
 
   // Current payroll ID
   const { data: currentPayrollId } = useReadContract({
@@ -171,9 +194,24 @@ export default function PayrollPage() {
   const formattedEmployerBalance = formatBalance(
     employerBalance as bigint | undefined
   );
+  const formattedAllowance = formatBalance(allowance as bigint | undefined);
 
-  const hasSufficientFunds =
-    formattedEmployerBalance >= formattedMonthlyBalance;
+  console.log("Payroll Debug:", {
+    employerBalance,
+    formattedEmployerBalance,
+    monthlyPayrollCost: monthlyPayrollCost?.toString(),
+    formattedMonthlyBalance,
+    userBalance,
+    formattedUserBalance,
+    allowance: allowance?.toString(),
+    formattedAllowance,
+    totalContractBalance,
+    displayBalance,
+    isAdmin: address === "0x11f7eaC93C9DD552DFD657BE52007A25E200f356",
+    isUsingTotalBalance: address === "0x11f7eaC93C9DD552DFD657BE52007A25E200f356",
+  });
+
+  const hasSufficientFunds = monthlyPayrollCost !== undefined && displayBalance >= monthlyPayrollCost;
 
   const history = [
     formatPayrollData(payrollHistory1),
@@ -256,6 +294,8 @@ export default function PayrollPage() {
     });
   };
 
+  console.log(step);
+
   return (
     <div className="p-4 md:p-8 bg-[#114277] min-h-screen">
       <div className="mb-6 md:mb-8">
@@ -295,15 +335,19 @@ export default function PayrollPage() {
             </CardTitle>
             <Wallet className="h-4 w-4 text-green-600" />
           </CardHeader>
-          <CardContent>
+           <CardContent>
             <div className="text-2xl font-bold text-gray-900">
               $
-              {formattedEmployerBalance.toLocaleString(undefined, {
+              {formattedDisplayBalance.toLocaleString(undefined, {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
               })}
             </div>
-            <p className="text-xs text-gray-500 mt-1">Available for payroll</p>
+            <p className="text-xs text-gray-500 mt-1">
+              {address === "0x11f7eaC93C9DD552DFD657BE52007A25E200f356"
+                ? "Total in contract"
+                : "Available for payroll"}
+            </p>
           </CardContent>
         </Card>
 
@@ -356,13 +400,12 @@ export default function PayrollPage() {
 
       {/* Action Buttons with Two-Step Dialog */}
       <div className="flex flex-col sm:flex-row gap-3 md:gap-4 mb-6 md:mb-8">
-        <Dialog open={step !== "closed"} onOpenChange={() => setStep("closed")}>
+        <Dialog
+          open={step === "approve" || step === "deposit"}
+          onOpenChange={(open) => setStep(open ? "approve" : "closed")}
+        >
           <DialogTrigger asChild>
-            <Button
-              variant="outline"
-              className="gap-2 w-full sm:w-auto"
-              onClick={() => setStep("approve")}
-            >
+            <Button variant="outline" className="gap-2 w-full sm:w-auto">
               <Wallet className="h-4 w-4 text-black" />
               <span className="text-black">Deposit USDC</span>
             </Button>
@@ -391,6 +434,9 @@ export default function PayrollPage() {
                 <div className="text-sm space-y-1">
                   <div className="text-gray-600">
                     Your balance: ${formattedUserBalance.toLocaleString()}
+                  </div>
+                  <div className="text-gray-600">
+                    Approved amount: ${formattedAllowance.toLocaleString()}
                   </div>
                   <div className="text-gray-600">
                     Contract balance: $

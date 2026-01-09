@@ -87,7 +87,9 @@ export default function PayrollPage() {
   });
 
   // Display balance: employer balance for regular users, total balance for admin
-  const displayBalance: bigint = (totalContractBalance ?? employerBalance ?? 0n) as bigint;
+  const displayBalance: bigint = (totalContractBalance ??
+    employerBalance ??
+    0n) as bigint;
 
   const formattedDisplayBalance = formatBalance(displayBalance);
 
@@ -170,20 +172,30 @@ export default function PayrollPage() {
 
   const formatPayrollData = (data: unknown) => {
     if (!data) return null;
-    const payrollData = data as {
-      id: bigint;
-      employer: bigint;
-      timestamp: bigint;
-      totalAmount: bigint;
-      employeeCount: bigint;
-      isCompleted: boolean;
-    };
+    const payrollData = data as [
+      bigint,
+      string,
+      bigint,
+      bigint,
+      bigint,
+      string,
+      boolean
+    ];
+    const [
+      id,
+      employer,
+      timestamp,
+      totalAmount,
+      employeeCount,
+      merkleRoot,
+      isCompleted,
+    ] = payrollData;
     return {
-      id: Number(payrollData.id),
-      date: new Date(Number(payrollData.timestamp) * 1000),
-      amount: formatBalance(payrollData.totalAmount),
-      employees: Number(payrollData.employeeCount),
-      completed: payrollData.isCompleted,
+      id: Number(id),
+      date: new Date(Number(timestamp) * 1000),
+      amount: formatBalance(totalAmount),
+      employees: Number(employeeCount),
+      completed: isCompleted,
     };
   };
 
@@ -208,10 +220,12 @@ export default function PayrollPage() {
     totalContractBalance,
     displayBalance,
     isAdmin: address === "0x11f7eaC93C9DD552DFD657BE52007A25E200f356",
-    isUsingTotalBalance: address === "0x11f7eaC93C9DD552DFD657BE52007A25E200f356",
+    isUsingTotalBalance:
+      address === "0x11f7eaC93C9DD552DFD657BE52007A25E200f356",
   });
 
-  const hasSufficientFunds = monthlyPayrollCost !== undefined && displayBalance >= monthlyPayrollCost;
+  const hasSufficientFunds =
+    monthlyPayrollCost !== undefined && displayBalance >= monthlyPayrollCost;
 
   const history = [
     formatPayrollData(payrollHistory1),
@@ -335,7 +349,7 @@ export default function PayrollPage() {
             </CardTitle>
             <Wallet className="h-4 w-4 text-green-600" />
           </CardHeader>
-           <CardContent>
+          <CardContent>
             <div className="text-2xl font-bold text-gray-900">
               $
               {formattedDisplayBalance.toLocaleString(undefined, {
@@ -415,14 +429,18 @@ export default function PayrollPage() {
           {step === "approve" && (
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
-                <DialogTitle>Step 1: Approve USDC</DialogTitle>
+                <DialogTitle className="text-black">
+                  Step 1: Approve USDC
+                </DialogTitle>
                 <DialogDescription>
                   Allow the payroll contract to spend your USDC.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="amount">Amount (USDC)</Label>
+                  <Label htmlFor="amount" className="text-black">
+                    Amount (USDC)
+                  </Label>
                   <Input
                     id="amount"
                     type="number"
@@ -470,7 +488,7 @@ export default function PayrollPage() {
 
           {/* Step 2: Deposit */}
           {step === "deposit" && (
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[425px] ">
               <DialogHeader>
                 <DialogTitle>Step 2: Deposit</DialogTitle>
                 <DialogDescription>
@@ -533,7 +551,7 @@ export default function PayrollPage() {
       {/* Payroll History - FIXED TO USE BLOCKCHAIN DATA */}
       <Card>
         <CardHeader>
-          <CardTitle>Payroll History</CardTitle>
+          <CardTitle className="text-black">Payroll History</CardTitle>
         </CardHeader>
         <CardContent>
           {history.length === 0 ? (
@@ -556,7 +574,7 @@ export default function PayrollPage() {
                 </TableHeader>
                 <TableBody>
                   {history.map((record) => (
-                    <TableRow key={record!.id}>
+                    <TableRow key={record!.id} className="text-black">
                       <TableCell className="font-medium">
                         #{record!.id}
                       </TableCell>

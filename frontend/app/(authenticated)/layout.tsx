@@ -1,8 +1,10 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { Sidebar } from "@/components/sidebar";
 import { Navbar } from "@/components/navbar";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 
@@ -12,13 +14,14 @@ export default function AuthenticatedLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { ready, authenticated } = usePrivy();
 
   useEffect(() => {
     if (ready && !authenticated && pathname !== "/") {
-      window.location.href = "/";
+      router.push("/");
     }
-  }, [ready, authenticated, pathname]);
+  }, [ready, authenticated, pathname, router]);
 
   if (!ready) {
     return (

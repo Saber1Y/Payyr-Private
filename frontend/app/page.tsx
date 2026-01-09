@@ -1,7 +1,9 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useEffect, useState } from "react";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,14 +19,15 @@ import {
 } from "lucide-react";
 
 export default function Home() {
+  const router = useRouter();
   const { ready, authenticated, login } = usePrivy();
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (ready && authenticated) {
-      redirect("/dashboard");
+      router.push("/dashboard");
     }
-  }, [ready, authenticated]);
+  }, [ready, authenticated, router]);
 
   const handleLogin = async () => {
     setIsLoading(true);
@@ -40,7 +43,7 @@ export default function Home() {
   if (!ready) {
     return (
       <div className="min-h-screen bg-[#114277] flex items-center justify-center">
-        <div className="text-white">Loading...</div>
+        <div className="text-white animate-spin" />
       </div>
     );
   }

@@ -1,0 +1,35 @@
+{
+  "projectName": "Payyr - USDC Automated Payroll System",
+  "shortDescription": "Multi-tenant automated payroll system on Arc Network enabling USDC payments to employees",
+  "longDescription": "A modern, multi-tenant automated payroll system built on Arc Network, enabling seamless USDC payments to employees with a beautiful fintech-style interface. Self-service employer registration allows unlimited companies to share the same smart contracts.",
+  "category": "DeFi/Payments",
+  "tags": ["payroll", "USDC", "multi-tenant", "Arc Network", "payments", "fintech"],
+  "githubUrl": "https://github.com/Saber1Y/Payyr",
+  "deployedUrl": "https://your-vercel-app.vercel.app",
+  "network": "Arc Testnet",
+  "contracts": {
+    "EmployeeRegistry": {
+      "address": "0x20B3dB45a351E92673112064A3F01951115eD6B7",
+      "purpose": "Manages employee records and employer registration"
+    },
+    "PayrollManager": {
+      "address": "0x1739715A3452BF1e336305cf8f9542d177cEa03A",
+      "purpose": "Manages USDC deposits and payroll execution"
+    }
+  },
+  "features": [
+    "Multi-Tenant Architecture",
+    "Self-Service Employer Registration",
+    "Employee Management System",
+    "Automated USDC Payroll",
+    "Dashboard Analytics",
+    "Role-Based Access Control"
+  ],
+  "techStack": {
+    "frontend": ["Next.js 16", "TypeScript", "TailwindCSS", "Privy", "Wagmi"],
+    "backend": ["Solidity", "Foundry", "OpenZeppelin"],
+    "network": "Arc Network"
+  },
+  "status": "Testnet Deployed",
+  "createdAt": "2025-01-09"
+}

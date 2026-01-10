@@ -1,3 +1,0 @@
-[submodule "Backend/lib/openzeppelin-contracts"]
-	path = Backend/lib/openzeppelin-contracts
-	url = https://github.com/OpenZeppelin/openzeppelin-contracts

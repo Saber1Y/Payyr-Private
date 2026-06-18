@@ -1,10 +1,11 @@
 // Daml EmployeeRegistry contract interactions
 import { ContractRecord, damlClient } from "./client";
+import { getTemplateId } from "./templateIds";
 
 export const EMPLOYEE_REGISTRY_TEMPLATE =
-  "#payyr-private:Payyr.Private.EmployeeRegistry:EmployeeProfile";
+  getTemplateId("Payyr.Private.EmployeeRegistry", "EmployeeProfile");
 export const EMPLOYER_TEMPLATE =
-  "#payyr-private:Payyr.Private.EmployeeRegistry:Employer";
+  getTemplateId("Payyr.Private.EmployeeRegistry", "Employer");
 
 export interface EmployeeProfile {
   employer: string;

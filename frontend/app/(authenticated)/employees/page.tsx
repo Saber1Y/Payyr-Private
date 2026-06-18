@@ -262,16 +262,19 @@ export default function EmployeesPage() {
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Add New Employee</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-black">Add New Employee</DialogTitle>
+              <DialogDescription className="text-gray-600">
                 Register a new employee to your payroll system.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="name">Full Name</Label>
+                <Label htmlFor="name" className="text-black">
+                  Full Name
+                </Label>
                 <Input
                   id="name"
+                  className="text-black"
                   value={formData.name}
                   onChange={(e) =>
                     setFormData({ ...formData, name: e.target.value })
@@ -280,9 +283,12 @@ export default function EmployeesPage() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="employee">Employee Party ID</Label>
+                <Label htmlFor="employee" className="text-black">
+                  Employee Party ID
+                </Label>
                 <Input
                   id="employee"
+                  className="text-black"
                   value={formData.employee}
                   onChange={(e) =>
                     setFormData({ ...formData, employee: e.target.value })
@@ -291,9 +297,12 @@ export default function EmployeesPage() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="role">Role/Position</Label>
+                <Label htmlFor="role" className="text-black">
+                  Role/Position
+                </Label>
                 <Input
                   id="role"
+                  className="text-black"
                   value={formData.role}
                   onChange={(e) =>
                     setFormData({ ...formData, role: e.target.value })
@@ -302,10 +311,13 @@ export default function EmployeesPage() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="salary">Monthly Salary</Label>
+                <Label htmlFor="salary" className="text-black">
+                  Monthly Salary
+                </Label>
                 <Input
                   id="salary"
                   type="number"
+                  className="text-black"
                   value={formData.salary}
                   onChange={(e) =>
                     setFormData({ ...formData, salary: e.target.value })
@@ -462,16 +474,19 @@ export default function EmployeesPage() {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Edit Employee</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-black">Edit Employee</DialogTitle>
+            <DialogDescription className="text-gray-600">
               Update employee information and payroll settings.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="edit-name">Full Name</Label>
+              <Label htmlFor="edit-name" className="text-black">
+                Full Name
+              </Label>
               <Input
                 id="edit-name"
+                className="text-black"
                 value={formData.name}
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
@@ -479,9 +494,12 @@ export default function EmployeesPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="edit-role">Role</Label>
+              <Label htmlFor="edit-role" className="text-black">
+                Role
+              </Label>
               <Input
                 id="edit-role"
+                className="text-black"
                 value={formData.role}
                 onChange={(e) =>
                   setFormData({ ...formData, role: e.target.value })
@@ -489,10 +507,13 @@ export default function EmployeesPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="edit-salary">Monthly Salary</Label>
+              <Label htmlFor="edit-salary" className="text-black">
+                Monthly Salary
+              </Label>
               <Input
                 id="edit-salary"
                 type="number"
+                className="text-black"
                 value={formData.salary}
                 onChange={(e) =>
                   setFormData({ ...formData, salary: e.target.value })

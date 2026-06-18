@@ -43,6 +43,7 @@ import {
 import { ContractRecord, damlClient } from "@/lib/daml/client";
 import { ensureEmployerContract } from "@/lib/daml/employeeRegistry";
 import type { Employer } from "@/lib/daml/employeeRegistry";
+import { resolveDamlParty } from "@/lib/daml/partyMapper";
 
 interface FormData {
   name: string;
@@ -54,7 +55,7 @@ interface FormData {
 
 export default function EmployeesPage() {
   const { user, ready, authenticated } = usePrivy();
-  const employerParty = user?.wallet?.address || "";
+  const employerParty = resolveDamlParty(user?.wallet?.address);
 
   useEffect(() => {
     damlClient.setParty(employerParty);
@@ -133,7 +134,7 @@ export default function EmployeesPage() {
     registerEmployee(
       {
         contractId: employerContract.contractId,
-        employee: formData.employee,
+        employee: resolveDamlParty(formData.employee),
         name: formData.name,
         salary: parseFloat(formData.salary),
         role: formData.role,

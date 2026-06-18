@@ -16,7 +16,7 @@ export interface ContractRecord<T> {
 // Default config for local Daml Sandbox
 export const defaultDamlConfig: DamlConfig = {
   ledgerId: process.env.NEXT_PUBLIC_DAML_LEDGER_ID || "sandbox",
-  apiUrl: process.env.NEXT_PUBLIC_DAML_API_URL || "http://localhost:7575",
+  apiUrl: process.env.NEXT_PUBLIC_DAML_API_PROXY_URL || "/api/daml",
   party: "", // Set dynamically from user auth
   accessToken: process.env.NEXT_PUBLIC_DAML_ACCESS_TOKEN || "",
 };
@@ -24,7 +24,7 @@ export const defaultDamlConfig: DamlConfig = {
 // For Canton DevNet (when available)
 export const cantonDevNetConfig: DamlConfig = {
   ledgerId: "canton",
-  apiUrl: "https://sandbox.daml.com",
+  apiUrl: process.env.NEXT_PUBLIC_DAML_API_PROXY_URL || "/api/daml",
   party: "", // Set dynamically from user auth
   accessToken: process.env.NEXT_PUBLIC_DAML_ACCESS_TOKEN || "",
 };
@@ -46,7 +46,8 @@ export class DamlClient {
 
   private getApiUrl(endpoint: string): string {
     const baseUrl = this.config.apiUrl.replace(/\/$/, "");
-    return `${baseUrl}${endpoint}`;
+    const normalizedEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+    return `${baseUrl}${normalizedEndpoint}`;
   }
 
   private extractResult<T>(response: unknown): T {
@@ -97,7 +98,7 @@ export class DamlClient {
       "Content-Type": "application/json",
     };
 
-    if (this.config.accessToken) {
+    if (this.config.accessToken && /^https?:\/\//.test(url)) {
       headers["Authorization"] = `Bearer ${this.config.accessToken}`;
     }
 

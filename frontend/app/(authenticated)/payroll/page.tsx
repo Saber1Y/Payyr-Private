@@ -24,7 +24,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Wallet, Send, AlertCircle, CheckCircle, Loader2 } from "lucide-react";
+import {
+  Wallet,
+  Send,
+  AlertCircle,
+  CheckCircle,
+  Loader2,
+  ShieldCheck,
+} from "lucide-react";
 import { useReadContract, useWriteContract } from "wagmi";
 import formatBalance from "@/utils/utils";
 import USDCABI from "../../../lib/abi/USDC.json";
@@ -606,6 +613,66 @@ export default function PayrollPage() {
               </Table>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Privacy & Auditor Controls */}
+      <Card className="mt-6 border-purple-200 bg-gradient-to-br from-purple-50 to-blue-50">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 text-purple-600" />
+            <CardTitle className="text-black">Privacy & Auditor Controls</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-4 bg-white rounded-lg border border-purple-200">
+              <h3 className="font-semibold text-black mb-2">🔐 Private Payroll</h3>
+              <p className="text-sm text-gray-700 mb-3">
+                Your payroll data is private by default. Only you and authorized auditors can see details.
+              </p>
+              <Button
+                variant="outline"
+                className="w-full text-purple-600 border-purple-200 hover:bg-purple-50"
+                onClick={() => (window.location.href = "/auditors")}
+              >
+                Manage Auditor Access
+              </Button>
+            </div>
+
+            <div className="p-4 bg-white rounded-lg border border-blue-200">
+              <h3 className="font-semibold text-black mb-2">👥 Employee Privacy</h3>
+              <p className="text-sm text-gray-700 mb-3">
+                Each employee only sees their own payment. Other employees cannot access salary data.
+              </p>
+              <Button
+                variant="outline"
+                className="w-full text-blue-600 border-blue-200 hover:bg-blue-50"
+                onClick={() => (window.location.href = "/employee-portal")}
+              >
+                View Employee Portal
+              </Button>
+            </div>
+          </div>
+
+          <div className="p-4 bg-white rounded-lg border border-green-200">
+            <h3 className="font-semibold text-black mb-2">ℹ️ Privacy Features</h3>
+            <ul className="text-sm text-gray-700 space-y-1">
+              <li>✓ Salaries encrypted and only visible to employer and employee</li>
+              <li>✓ Payroll batches are private by default</li>
+              <li>✓ Grant auditor access for compliance and verification</li>
+              <li>✓ Employee wallet addresses not exposed publicly</li>
+              <li>✓ Role-based access control enforced at contract level</li>
+            </ul>
+          </div>
+
+          <Button
+            variant="outline"
+            className="w-full text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+            onClick={() => (window.location.href = "/privacy-demo")}
+          >
+            View Privacy Demo
+          </Button>
         </CardContent>
       </Card>
     </div>

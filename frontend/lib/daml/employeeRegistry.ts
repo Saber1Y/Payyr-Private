@@ -1,5 +1,5 @@
 // Daml EmployeeRegistry contract interactions
-import { damlClient } from "./client";
+import { ContractRecord, damlClient } from "./client";
 
 export const EMPLOYEE_REGISTRY_TEMPLATE =
   "Payyr.Private.EmployeeRegistry:EmployeeProfile";
@@ -18,6 +18,24 @@ export interface EmployeeProfile {
 
 export interface Employer {
   employer: string;
+}
+
+export async function getEmployerContracts(
+  employer: string,
+): Promise<ContractRecord<Employer>[]> {
+  return damlClient.queryContracts<Employer>(EMPLOYER_TEMPLATE, { employer });
+}
+
+export async function ensureEmployerContract(
+  employer: string,
+): Promise<ContractRecord<Employer>> {
+  const contracts = await getEmployerContracts(employer);
+
+  if (contracts.length > 0) {
+    return contracts[0];
+  }
+
+  return damlClient.createContract<Employer>(EMPLOYER_TEMPLATE, { employer });
 }
 
 // Register a new employee
@@ -89,7 +107,7 @@ export async function revokeAuditorAccess(
 // Query all employees for an employer
 export async function getEmployeesByEmployer(
   employer: string,
-): Promise<Array<{ contractId: string; payload: EmployeeProfile }>> {
+): Promise<ContractRecord<EmployeeProfile>[]> {
   return damlClient.queryContracts<EmployeeProfile>(
     EMPLOYEE_REGISTRY_TEMPLATE,
     { employer },
@@ -99,7 +117,7 @@ export async function getEmployeesByEmployer(
 // Query active employees only
 export async function getActiveEmployees(
   employer: string,
-): Promise<Array<{ contractId: string; payload: EmployeeProfile }>> {
+): Promise<ContractRecord<EmployeeProfile>[]> {
   const employees = await getEmployeesByEmployer(employer);
   return employees.filter((emp) => emp.payload.isActive);
 }

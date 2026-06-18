@@ -7,6 +7,11 @@ export interface DamlConfig {
   party: string;
 }
 
+export interface ContractRecord<T> {
+  contractId: string;
+  payload: T;
+}
+
 // Default config for local Daml Sandbox
 export const defaultDamlConfig: DamlConfig = {
   ledgerId: "payyr-private",
@@ -30,6 +35,44 @@ export class DamlClient {
 
   setParty(party: string) {
     this.config.party = party;
+  }
+
+  private extractResult<T>(response: unknown): T {
+    if (
+      response &&
+      typeof response === "object" &&
+      "result" in response
+    ) {
+      return (response as { result: T }).result;
+    }
+
+    return response as T;
+  }
+
+  private normalizeContractRecord<T>(
+    value: unknown,
+  ): ContractRecord<T> | null {
+    if (!value || typeof value !== "object") {
+      return null;
+    }
+
+    const record =
+      "created" in value && value.created && typeof value.created === "object"
+        ? value.created
+        : value;
+
+    if (
+      "contractId" in record &&
+      typeof record.contractId === "string" &&
+      "payload" in record
+    ) {
+      return {
+        contractId: record.contractId,
+        payload: record.payload as T,
+      };
+    }
+
+    return null;
   }
 
   private async request<T>(
@@ -63,9 +106,18 @@ export class DamlClient {
   async queryContracts<T>(
     templateId: string,
     predicate?: Record<string, unknown>,
-  ): Promise<Array<{ contractId: string; payload: T }>> {
+  ): Promise<ContractRecord<T>[]> {
     const query = { templateId, ...predicate };
-    return this.request(`/contract/search`, "POST", query);
+    const response = await this.request<unknown>(`/contract/search`, "POST", query);
+    const result = this.extractResult<unknown[]>(response);
+
+    if (!Array.isArray(result)) {
+      return [];
+    }
+
+    return result
+      .map((item) => this.normalizeContractRecord<T>(item))
+      .filter((item): item is ContractRecord<T> => item !== null);
   }
 
   // Exercise choice
@@ -73,23 +125,55 @@ export class DamlClient {
     contractId: string,
     choice: string,
     argument: unknown,
-  ): Promise<T> {
-    return this.request(`/command/exercise`, "POST", {
+  ): Promise<ContractRecord<T>> {
+    const response = await this.request<unknown>(`/command/exercise`, "POST", {
       contractId,
       choice,
       argument,
     });
+
+    const result = this.extractResult<{
+      events?: unknown[];
+      exerciseResult?: unknown;
+    }>(response);
+
+    const createdEvent = result?.events
+      ?.map((event) => this.normalizeContractRecord<T>(event))
+      .find((event): event is ContractRecord<T> => event !== null);
+
+    if (createdEvent) {
+      return createdEvent;
+    }
+
+    const exerciseResult = this.normalizeContractRecord<T>(
+      result?.exerciseResult,
+    );
+
+    if (exerciseResult) {
+      return exerciseResult;
+    }
+
+    throw new Error(`No created contract returned from choice ${choice}`);
   }
 
   // Create contract
   async createContract<T>(
     templateId: string,
     payload: T,
-  ): Promise<{ contractId: string; payload: T }> {
-    return this.request(`/command/create`, "POST", {
+  ): Promise<ContractRecord<T>> {
+    const response = await this.request<unknown>(`/command/create`, "POST", {
       templateId,
       payload,
     });
+
+    const result = this.extractResult<unknown>(response);
+    const contract = this.normalizeContractRecord<T>(result);
+
+    if (!contract) {
+      throw new Error(`No contract returned when creating ${templateId}`);
+    }
+
+    return contract;
   }
 }
 

@@ -10,8 +10,8 @@ const sora = Sora({
 });
 
 export const metadata: Metadata = {
-  title: "USDC Payroll System - Arc Network",
-  description: "Modern payroll management system built on Arc Network",
+  title: "Payyr Private",
+  description: "Private payroll management built on Daml and Canton",
 };
 
 export default function RootLayout({

@@ -1,5 +1,5 @@
 // Daml PayrollManager contract interactions
-import { damlClient } from "./client";
+import { ContractRecord, damlClient } from "./client";
 
 export const PAYROLL_RUN_TEMPLATE = "Payyr.Private.PayrollManager:PayrollRun";
 export const EMPLOYEE_PAYMENT_TEMPLATE =
@@ -29,6 +29,29 @@ export interface EmployeePayment {
 export interface PayrollManager {
   admin: string;
   currentPayrollId: number;
+}
+
+export async function getPayrollManagerContracts(
+  admin: string,
+): Promise<ContractRecord<PayrollManager>[]> {
+  return damlClient.queryContracts<PayrollManager>(PAYROLL_MANAGER_TEMPLATE, {
+    admin,
+  });
+}
+
+export async function ensurePayrollManagerContract(
+  admin: string,
+): Promise<ContractRecord<PayrollManager>> {
+  const contracts = await getPayrollManagerContracts(admin);
+
+  if (contracts.length > 0) {
+    return contracts[0];
+  }
+
+  return damlClient.createContract<PayrollManager>(PAYROLL_MANAGER_TEMPLATE, {
+    admin,
+    currentPayrollId: 0,
+  });
 }
 
 // Create a new payroll run
@@ -96,7 +119,7 @@ export async function withdrawPayroll(
   contractId: string,
   employer: string,
   amount: number,
-): Promise<{ contractId: string; payload: unknown }> {
+): Promise<ContractRecord<unknown>> {
   return damlClient.exerciseChoice(contractId, "WithdrawPayroll", {
     employer,
     amount,
@@ -106,7 +129,7 @@ export async function withdrawPayroll(
 // Query payroll runs for an employer
 export async function getPayrollsByEmployer(
   employer: string,
-): Promise<Array<{ contractId: string; payload: PayrollRun }>> {
+): Promise<ContractRecord<PayrollRun>[]> {
   return damlClient.queryContracts<PayrollRun>(PAYROLL_RUN_TEMPLATE, {
     employer,
   });
@@ -115,7 +138,7 @@ export async function getPayrollsByEmployer(
 // Query employee payments
 export async function getEmployeePayments(
   employee: string,
-): Promise<Array<{ contractId: string; payload: EmployeePayment }>> {
+): Promise<ContractRecord<EmployeePayment>[]> {
   return damlClient.queryContracts<EmployeePayment>(EMPLOYEE_PAYMENT_TEMPLATE, {
     employee,
   });
@@ -124,7 +147,7 @@ export async function getEmployeePayments(
 // Query unclaimed payments
 export async function getUnclaimedPayments(
   employee: string,
-): Promise<Array<{ contractId: string; payload: EmployeePayment }>> {
+): Promise<ContractRecord<EmployeePayment>[]> {
   const payments = await getEmployeePayments(employee);
   return payments.filter((payment) => !payment.payload.claimed);
 }

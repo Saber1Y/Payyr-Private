@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -38,7 +38,9 @@ import {
   useDeactivateEmployee,
   useActivateEmployee,
 } from "@/lib/daml/hooks";
-import { damlClient } from "@/lib/daml/client";
+import { ContractRecord, damlClient } from "@/lib/daml/client";
+import { ensureEmployerContract } from "@/lib/daml/employeeRegistry";
+import type { Employer } from "@/lib/daml/employeeRegistry";
 
 interface FormData {
   name: string;
@@ -51,6 +53,10 @@ interface FormData {
 export default function EmployeesPage() {
   const { user, ready, authenticated } = usePrivy();
   const employerParty = user?.wallet?.address || "";
+
+  useEffect(() => {
+    damlClient.setParty(employerParty);
+  }, [employerParty]);
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -93,7 +99,7 @@ export default function EmployeesPage() {
     setEditingContractId(null);
   };
 
-  const handleAddEmployee = () => {
+  const handleAddEmployee = async () => {
     if (
       !formData.name ||
       !formData.employee ||
@@ -109,14 +115,27 @@ export default function EmployeesPage() {
       return;
     }
 
+    let employerContract: ContractRecord<Employer>;
+
+    try {
+      employerContract = await ensureEmployerContract(employerParty);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to load employer contract";
+      alert(`Error: ${message}`);
+      return;
+    }
+
     registerEmployee(
       {
-        contractId: "", // Will be fetched from employer contract
+        contractId: employerContract.contractId,
         employee: formData.employee,
         name: formData.name,
         salary: parseFloat(formData.salary),
         role: formData.role,
-        startDate: formData.startDate,
+        startDate: new Date(formData.startDate).toISOString(),
       },
       {
         onSuccess: () => {
@@ -131,9 +150,11 @@ export default function EmployeesPage() {
   };
 
   const handleEditEmployee = (contractId: string) => {
-    const emp = employees?.find((e) => e.key.contractId === contractId);
+    const emp = employees?.find(
+      (employee) => employee.contractId === contractId,
+    );
     if (emp) {
-      const record = emp.value;
+      const record = emp.payload;
       setEditingContractId(contractId);
       setFormData({
         name: record.name,
@@ -160,9 +181,9 @@ export default function EmployeesPage() {
     updateEmployee(
       {
         contractId: editingContractId,
-        name: formData.name,
-        salary: parseFloat(formData.salary),
-        role: formData.role,
+        newName: formData.name,
+        newSalary: parseFloat(formData.salary),
+        newRole: formData.role,
       },
       {
         onSuccess: () => {
@@ -178,26 +199,20 @@ export default function EmployeesPage() {
 
   const handleDeactivateEmployee = (contractId: string) => {
     if (confirm("Are you sure you want to deactivate this employee?")) {
-      deactivateEmployee(
-        { contractId },
-        {
-          onError: (err) => {
-            alert(`Error: ${err.message}`);
-          },
+      deactivateEmployee(contractId, {
+        onError: (err) => {
+          alert(`Error: ${err.message}`);
         },
-      );
+      });
     }
   };
 
   const handleActivateEmployee = (contractId: string) => {
-    activateEmployee(
-      { contractId },
-      {
-        onError: (err) => {
-          alert(`Error: ${err.message}`);
-        },
+    activateEmployee(contractId, {
+      onError: (err) => {
+        alert(`Error: ${err.message}`);
       },
-    );
+    });
   };
 
   if (!ready || !authenticated) {
@@ -215,7 +230,8 @@ export default function EmployeesPage() {
     );
   }
 
-  const activeCount = employees?.filter((e) => e.value.isActive).length || 0;
+  const activeCount =
+    employees?.filter((employee) => employee.payload.isActive).length || 0;
 
   return (
     <div className="p-4 md:p-8 bg-[#114277] min-h-screen">
@@ -359,8 +375,8 @@ export default function EmployeesPage() {
                 </TableHeader>
                 <TableBody>
                   {employees.map((emp) => {
-                    const record = emp.value;
-                    const contractId = emp.key.contractId;
+                    const record = emp.payload;
+                    const contractId = emp.contractId;
                     return (
                       <TableRow key={contractId}>
                         <TableCell className="font-medium">
@@ -378,7 +394,7 @@ export default function EmployeesPage() {
                           {record.role}
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
-                          ${record.salary.toLocaleString()}
+                          ${Number(record.salary).toLocaleString()}
                         </TableCell>
                         <TableCell>
                           <span

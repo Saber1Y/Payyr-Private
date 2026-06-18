@@ -1,4 +1,3 @@
-@import "@fontsource/sora";
 @import "tailwindcss";
 
 :root {
@@ -18,8 +17,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: "Sora", "Inter", "Segoe UI", system-ui, -apple-system,
-    BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  --font-sans: var(--font-sora), "Inter", "Segoe UI", system-ui,
+    -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {

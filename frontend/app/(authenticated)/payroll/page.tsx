@@ -44,12 +44,12 @@ import {
   ensurePayrollManagerContract,
   type PayrollManager,
 } from "@/lib/daml/payrollManager";
-import { resolveDamlParty } from "@/lib/daml/partyMapper";
+import { useDamlParty } from "@/hooks/useDamlParty";
 
 export default function PayrollPage() {
   const router = useRouter();
-  const { user, authenticated } = usePrivy();
-  const employerParty = resolveDamlParty(user?.wallet?.address);
+  const { authenticated } = usePrivy();
+  const { damlParty: employerParty } = useDamlParty();
 
   const [isRunDialogOpen, setIsRunDialogOpen] = useState(false);
 

@@ -20,6 +20,7 @@ import {
   useRevokePayrollAuditorAccess,
 } from "@/lib/daml/hooks";
 import { damlClient } from "@/lib/daml/client";
+import { resolveDamlParty } from "@/lib/daml/partyMapper";
 
 interface AuditorAccessRecord {
   contractId: string;
@@ -30,7 +31,7 @@ interface AuditorAccessRecord {
 
 export default function AuditorsPage() {
   const { user, authenticated } = usePrivy();
-  const employerParty = user?.wallet?.address || "";
+  const employerParty = resolveDamlParty(user?.wallet?.address);
 
   const [newAuditorParty, setNewAuditorParty] = useState("");
   const [selectedPayrollId, setSelectedPayrollId] = useState("");
@@ -84,7 +85,7 @@ export default function AuditorsPage() {
     grantAuditorAccess(
       {
         contractId: payroll.contractId,
-        auditor: newAuditorParty,
+        auditor: resolveDamlParty(newAuditorParty),
       },
       {
         onSuccess: () => {

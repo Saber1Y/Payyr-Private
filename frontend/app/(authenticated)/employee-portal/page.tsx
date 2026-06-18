@@ -15,10 +15,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useClaimPayment, useEmployeePayments } from "@/lib/daml/hooks";
 import { damlClient } from "@/lib/daml/client";
+import { resolveDamlParty } from "@/lib/daml/partyMapper";
 
 export default function EmployeePortalPage() {
   const { user, authenticated } = usePrivy();
-  const employeeParty = user?.wallet?.address || "";
+  const employeeParty = resolveDamlParty(user?.wallet?.address);
 
   useEffect(() => {
     damlClient.setParty(employeeParty);

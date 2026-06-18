@@ -252,7 +252,7 @@ export default function PrivacyDemoPage() {
             </h3>
             <p className="text-gray-700">
               Employees can trust that their compensation details remain
-              confidential and are not exposed on the public blockchain.
+              confidential and are not exposed across the broader ledger.
             </p>
           </div>
         </div>

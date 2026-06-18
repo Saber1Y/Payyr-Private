@@ -78,9 +78,7 @@ export function Sidebar() {
         <div className="flex items-center space-x-2">
           <DollarSign className="h-8 w-8 text-indigo-600" />
           {isOpen && (
-            <span className="text-xl font-bold text-gray-900">
-              USDC Payroll
-            </span>
+            <span className="text-xl font-bold text-gray-900">Payyr Private</span>
           )}
         </div>
         <button

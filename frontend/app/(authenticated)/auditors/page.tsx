@@ -1,174 +1,211 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { useAccount } from "wagmi";
+import { usePrivy } from "@privy-io/react-auth";
+import {
+  useGrantPayrollAuditorAccess,
+  usePayrollsByEmployer,
+  useRevokePayrollAuditorAccess,
+} from "@/lib/daml/hooks";
+import { damlClient } from "@/lib/daml/client";
 
 interface AuditorAccessRecord {
+  contractId: string;
   payrollId: number;
-  auditorAddress: string;
-  grantedAt: Date;
-  status: "active" | "revoked";
+  auditor: string;
+  grantedAt: string;
 }
 
 export default function AuditorsPage() {
-  const { address } = useAccount();
-  const [auditors, setAuditors] = useState<AuditorAccessRecord[]>([]);
-  const [newAuditorAddress, setNewAuditorAddress] = useState("");
-  const [selectedPayrollId, setSelectedPayrollId] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { user, authenticated } = usePrivy();
+  const employerParty = user?.wallet?.address || "";
 
-  const handleGrantAccess = async () => {
-    if (!newAuditorAddress || !selectedPayrollId) {
-      alert("Please provide auditor address and payroll ID");
+  const [newAuditorParty, setNewAuditorParty] = useState("");
+  const [selectedPayrollId, setSelectedPayrollId] = useState("");
+
+  useEffect(() => {
+    damlClient.setParty(employerParty);
+  }, [employerParty]);
+
+  const {
+    data: payrolls,
+    isLoading,
+    error,
+  } = usePayrollsByEmployer(employerParty);
+
+  const { mutate: grantAuditorAccess, isPending: isGrantPending } =
+    useGrantPayrollAuditorAccess();
+  const { mutate: revokeAuditorAccess, isPending: isRevokePending } =
+    useRevokePayrollAuditorAccess();
+
+  const accessRecords = useMemo<AuditorAccessRecord[]>(() => {
+    return (payrolls ?? []).flatMap((payroll) =>
+      payroll.payload.authorizedAuditors.map((auditor) => ({
+        contractId: payroll.contractId,
+        payrollId: Number(payroll.payload.payrollId),
+        auditor,
+        grantedAt: payroll.payload.timestamp,
+      })),
+    );
+  }, [payrolls]);
+
+  const handleGrantAccess = () => {
+    if (!newAuditorParty || !selectedPayrollId) {
+      alert("Please provide auditor party and payroll ID");
       return;
     }
 
-    setLoading(true);
-    try {
-      // TODO: Call contract function grantAuditorAccess
-      const newRecord: AuditorAccessRecord = {
-        payrollId: parseInt(selectedPayrollId),
-        auditorAddress: newAuditorAddress,
-        grantedAt: new Date(),
-        status: "active",
-      };
-      setAuditors([...auditors, newRecord]);
-      setNewAuditorAddress("");
-      setSelectedPayrollId("");
-    } catch (error) {
-      console.error("Error granting auditor access:", error);
-      alert("Failed to grant auditor access");
-    } finally {
-      setLoading(false);
+    const payroll = payrolls?.find(
+      (item) => Number(item.payload.payrollId) === Number(selectedPayrollId),
+    );
+
+    if (!payroll) {
+      alert("Payroll run not found");
+      return;
     }
+
+    grantAuditorAccess(
+      {
+        contractId: payroll.contractId,
+        auditor: newAuditorParty,
+      },
+      {
+        onSuccess: () => {
+          setNewAuditorParty("");
+          setSelectedPayrollId("");
+        },
+        onError: (grantError) => {
+          alert(`Failed to grant auditor access: ${grantError.message}`);
+        },
+      },
+    );
   };
 
-  const handleRevokeAccess = async (
-    auditorAddress: string,
-    payrollId: number,
-  ) => {
+  const handleRevokeAccess = (contractId: string, auditor: string) => {
     if (!window.confirm("Are you sure you want to revoke auditor access?")) {
       return;
     }
 
-    setLoading(true);
-    try {
-      // TODO: Call contract function revokeAuditorAccess
-      setAuditors(
-        auditors.map((record) =>
-          record.auditorAddress === auditorAddress &&
-          record.payrollId === payrollId
-            ? { ...record, status: "revoked" as const }
-            : record,
-        ),
-      );
-    } catch (error) {
-      console.error("Error revoking auditor access:", error);
-      alert("Failed to revoke auditor access");
-    } finally {
-      setLoading(false);
-    }
+    revokeAuditorAccess(
+      {
+        contractId,
+        auditor,
+      },
+      {
+        onError: (revokeError) => {
+          alert(`Failed to revoke auditor access: ${revokeError.message}`);
+        },
+      },
+    );
   };
+
+  const isMutating = isGrantPending || isRevokePending;
+
+  if (!authenticated) {
+    return <div>Please log in to manage auditor access.</div>;
+  }
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Auditor Access Control</h1>
-        <p className="text-gray-600 mt-2">
-          Grant or revoke auditor access to your payroll batches. Auditors can
-          verify payroll records without accessing public information.
+        <p className="mt-2 text-gray-600">
+          Grant or revoke auditor access to payroll runs stored on the Daml
+          ledger.
         </p>
       </div>
 
       <Card className="p-6">
-        <h2 className="text-xl font-semibold mb-4">Grant Auditor Access</h2>
+        <h2 className="mb-4 text-xl font-semibold">Grant Auditor Access</h2>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">
-              Payroll Batch ID
+            <label className="mb-2 block text-sm font-medium">
+              Payroll Run ID
             </label>
             <Input
               type="number"
-              placeholder="Enter payroll ID"
+              placeholder="Enter payroll run ID"
               value={selectedPayrollId}
-              onChange={(e) => setSelectedPayrollId(e.target.value)}
+              onChange={(event) => setSelectedPayrollId(event.target.value)}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-2">
-              Auditor Wallet Address
+            <label className="mb-2 block text-sm font-medium">
+              Auditor Party
             </label>
             <Input
               type="text"
-              placeholder="0x..."
-              value={newAuditorAddress}
-              onChange={(e) => setNewAuditorAddress(e.target.value)}
+              placeholder="auditor::party"
+              value={newAuditorParty}
+              onChange={(event) => setNewAuditorParty(event.target.value)}
             />
           </div>
           <Button
             onClick={handleGrantAccess}
-            disabled={loading}
+            disabled={isMutating || isLoading}
             className="w-full bg-blue-600 hover:bg-blue-700"
           >
-            {loading ? "Granting Access..." : "Grant Auditor Access"}
+            {isGrantPending ? "Granting Access..." : "Grant Auditor Access"}
           </Button>
         </div>
       </Card>
 
       <Card className="p-6">
-        <h2 className="text-xl font-semibold mb-4">
+        <h2 className="mb-4 text-xl font-semibold">
           Active Auditor Permissions
         </h2>
-        {auditors.length === 0 ? (
-          <p className="text-gray-500">No auditor access records yet</p>
+        {isLoading ? (
+          <p className="text-gray-500">Loading payroll runs...</p>
+        ) : error ? (
+          <p className="text-red-500">Failed to load payroll runs.</p>
+        ) : accessRecords.length === 0 ? (
+          <p className="text-gray-500">No auditor access records yet.</p>
         ) : (
           <div className="space-y-3">
-            {auditors
-              .filter((a) => a.status === "active")
-              .map((record) => (
-                <div
-                  key={`${record.payrollId}-${record.auditorAddress}`}
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border"
-                >
-                  <div>
-                    <p className="font-mono text-sm">{record.auditorAddress}</p>
-                    <p className="text-xs text-gray-600">
-                      Payroll ID: {record.payrollId}
-                    </p>
-                  </div>
-                  <Button
-                    onClick={() =>
-                      handleRevokeAccess(
-                        record.auditorAddress,
-                        record.payrollId,
-                      )
-                    }
-                    variant="destructive"
-                    size="sm"
-                  >
-                    Revoke
-                  </Button>
+            {accessRecords.map((record) => (
+              <div
+                key={`${record.contractId}-${record.auditor}`}
+                className="flex items-center justify-between rounded-lg border bg-gray-50 p-4"
+              >
+                <div>
+                  <p className="font-mono text-sm">{record.auditor}</p>
+                  <p className="text-xs text-gray-600">
+                    Payroll ID: {record.payrollId}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Granted: {new Date(record.grantedAt).toLocaleString()}
+                  </p>
                 </div>
-              ))}
+                <Button
+                  onClick={() =>
+                    handleRevokeAccess(record.contractId, record.auditor)
+                  }
+                  variant="destructive"
+                  size="sm"
+                  disabled={isMutating}
+                >
+                  Revoke
+                </Button>
+              </div>
+            ))}
           </div>
         )}
       </Card>
 
-      <Card className="p-6 bg-blue-50 border-blue-200">
-        <h3 className="font-semibold text-blue-900 mb-2">
-          🔐 Privacy Information
+      <Card className="border-blue-200 bg-blue-50 p-6">
+        <h3 className="mb-2 font-semibold text-blue-900">
+          Privacy on Daml
         </h3>
-        <ul className="text-sm text-blue-800 space-y-1">
+        <ul className="space-y-1 text-sm text-blue-800">
+          <li>Auditors only observe payroll runs you explicitly authorize.</li>
           <li>
-            • Auditors can view full payroll details only for batches they have
-            access to
+            Employee payment contracts stay visible to the employer and
+            employee.
           </li>
-          <li>• Employees can only see their own payment information</li>
-          <li>• Other employees cannot see any payroll data</li>
-          <li>• You can revoke auditor access at any time</li>
+          <li>You can revoke payroll-run access at any time.</li>
         </ul>
       </Card>
     </div>

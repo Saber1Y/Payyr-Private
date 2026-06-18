@@ -1,0 +1,142 @@
+module Payyr.Private.EmployeeRegistry where
+
+import DA.List (filter)
+import DA.Text
+
+containsParty : Party -> [Party] -> Bool
+containsParty _ [] = False
+containsParty x (y :: ys) = x == y || containsParty x ys
+
+nubParties : [Party] -> [Party]
+nubParties [] = []
+nubParties (x :: xs) = if containsParty x xs then nubParties xs else x :: nubParties xs
+
+template Employer
+  with
+    employer : Party
+  where
+    signatory employer
+
+    choice RegisterEmployee : ContractId EmployeeProfile
+      with
+        employee : Party
+        name : Text
+        salary : Decimal
+        role : Text
+        startDate : Time
+      controller employer
+      do
+        assertMsg "Name cannot be empty" (name /= "")
+        assertMsg "Salary must be greater than 0" (salary > 0.0)
+        create EmployeeProfile with
+          employer = employer
+          employee = employee
+          name = name
+          salary = salary
+          role = role
+          isActive = True
+          startDate = startDate
+          authorizedAuditors = []
+
+template EmployeeProfile
+  with
+    employer : Party
+    employee : Party
+    name : Text
+    salary : Decimal
+    role : Text
+    isActive : Bool
+    startDate : Time
+    authorizedAuditors : [Party]
+  where
+    signatory employer
+    observer employee, authorizedAuditors
+
+    choice UpdateEmployee : ContractId EmployeeProfile
+      with
+        newName : Text
+        newSalary : Decimal
+        newRole : Text
+      controller employer
+      do
+        assertMsg "Name cannot be empty" (newName /= "")
+        assertMsg "Salary must be greater than 0" (newSalary > 0.0)
+        archive self
+        create EmployeeProfile with
+          employer = employer
+          employee = employee
+          name = newName
+          salary = newSalary
+          role = newRole
+          isActive = isActive
+          startDate = startDate
+          authorizedAuditors = authorizedAuditors
+
+    choice DeactivateEmployee : ContractId EmployeeProfile
+      controller employer
+      do
+        assertMsg "Employee already inactive" isActive
+        archive self
+        create EmployeeProfile with
+          employer = employer
+          employee = employee
+          name = name
+          salary = salary
+          role = role
+          isActive = False
+          startDate = startDate
+          authorizedAuditors = authorizedAuditors
+
+    choice ActivateEmployee : ContractId EmployeeProfile
+      controller employer
+      do
+        assertMsg "Employee already active" (not isActive)
+        archive self
+        create EmployeeProfile with
+          employer = employer
+          employee = employee
+          name = name
+          salary = salary
+          role = role
+          isActive = True
+          startDate = startDate
+          authorizedAuditors = authorizedAuditors
+
+    choice GrantAuditorAccess : ContractId EmployeeProfile
+      with
+        auditor : Party
+      controller employer
+      do
+        assertMsg "Auditor already authorized" (not (containsParty auditor authorizedAuditors))
+        archive self
+        create EmployeeProfile with
+          employer = employer
+          employee = employee
+          name = name
+          salary = salary
+          role = role
+          isActive = isActive
+          startDate = startDate
+          authorizedAuditors = nubParties (auditor :: authorizedAuditors)
+
+    choice RevokeAuditorAccess : ContractId EmployeeProfile
+      with
+        auditor : Party
+      controller employer
+      do
+        assertMsg "Auditor not authorized" (containsParty auditor authorizedAuditors)
+        archive self
+        create EmployeeProfile with
+          employer = employer
+          employee = employee
+          name = name
+          salary = salary
+          role = role
+          isActive = isActive
+          startDate = startDate
+          authorizedAuditors = filter (/= auditor) authorizedAuditors
+
+    choice ViewOwnProfile : ()
+      controller employee
+      do
+        pure ()

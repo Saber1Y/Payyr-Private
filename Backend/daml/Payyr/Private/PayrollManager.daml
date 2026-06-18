@@ -1,0 +1,178 @@
+module Payyr.Private.PayrollManager where
+
+import DA.List (filter)
+import Payyr.Private.EmployeeRegistry (EmployeeProfile)
+
+containsParty : Party -> [Party] -> Bool
+containsParty _ [] = False
+containsParty x (y :: ys) = x == y || containsParty x ys
+
+nubParties : [Party] -> [Party]
+nubParties [] = []
+nubParties (x :: xs) = if containsParty x xs then nubParties xs else x :: nubParties xs
+
+sumSalary : [EmployeeProfile] -> Decimal
+sumSalary = foldr (\ep acc -> ep.salary + acc) 0.0
+
+createPayments : [EmployeeProfile] -> Int -> Party -> Update [ContractId EmployeePayment]
+createPayments [] _ _ = pure []
+createPayments (rp :: rps) payrollId employer = do
+  cid <- create EmployeePayment with
+    payrollId = payrollId
+    employer = employer
+    employee = rp.employee
+    amount = rp.salary
+    claimed = False
+  rest <- createPayments rps payrollId employer
+  pure (cid :: rest)
+
+template EmployerBalance
+  with
+    employer : Party
+    balance : Decimal
+  where
+    signatory employer
+
+template PayrollRun
+  with
+    employer : Party
+    payrollId : Int
+    timestamp : Time
+    totalAmount : Decimal
+    employeeCount : Int
+    isCompleted : Bool
+    authorizedAuditors : [Party]
+    isPublic : Bool
+  where
+    signatory employer
+    observer authorizedAuditors
+
+    choice GrantAuditorAccess : ContractId PayrollRun
+      with
+        auditor : Party
+      controller employer
+      do
+        assertMsg "Auditor already authorized" (not (containsParty auditor authorizedAuditors))
+        archive self
+        create PayrollRun with
+          employer = employer
+          payrollId = payrollId
+          timestamp = timestamp
+          totalAmount = totalAmount
+          employeeCount = employeeCount
+          isCompleted = isCompleted
+          authorizedAuditors = auditor :: authorizedAuditors
+          isPublic = isPublic
+
+    choice RevokeAuditorAccess : ContractId PayrollRun
+      with
+        auditor : Party
+      controller employer
+      do
+        assertMsg "Auditor not authorized" (containsParty auditor authorizedAuditors)
+        archive self
+        create PayrollRun with
+          employer = employer
+          payrollId = payrollId
+          timestamp = timestamp
+          totalAmount = totalAmount
+          employeeCount = employeeCount
+          isCompleted = isCompleted
+          authorizedAuditors = filter (/= auditor) authorizedAuditors
+          isPublic = isPublic
+
+    choice MakePayrollPublic : ContractId PayrollRun
+      controller employer
+      do
+        archive self
+        create PayrollRun with
+          employer = employer
+          payrollId = payrollId
+          timestamp = timestamp
+          totalAmount = totalAmount
+          employeeCount = employeeCount
+          isCompleted = isCompleted
+          authorizedAuditors = authorizedAuditors
+          isPublic = True
+
+    choice IssueEmployeePayment : ContractId EmployeePayment
+      with
+        employee : Party
+        amount : Decimal
+      controller employer
+      do
+        assertMsg "Amount must be greater than 0" (amount > 0.0)
+        create EmployeePayment with
+          payrollId = payrollId
+          employer = employer
+          employee = employee
+          amount = amount
+          claimed = False
+
+template EmployeePayment
+  with
+    payrollId : Int
+    employer : Party
+    employee : Party
+    amount : Decimal
+    claimed : Bool
+  where
+    signatory employer
+    observer employee
+
+    choice Claim : ContractId EmployeePayment
+      controller employee
+      do
+        assertMsg "Payroll already claimed" (not claimed)
+        archive self
+        create EmployeePayment with
+          payrollId = payrollId
+          employer = employer
+          employee = employee
+          amount = amount
+          claimed = True
+
+template PayrollManager
+  with
+    admin : Party
+    currentPayrollId : Int
+  where
+    signatory admin
+
+    choice CreatePayrollRun : ContractId PayrollRun
+      with
+        employer : Party
+        employeeProfiles : [EmployeeProfile]
+        timestamp : Time
+      controller admin
+      do
+        let activeProfiles = filter (\rp -> rp.isActive) employeeProfiles
+        let totalAmount = sumSalary activeProfiles
+        assertMsg "No active employees" (length activeProfiles > 0)
+        let nextPayrollId = currentPayrollId + 1
+        payrollCid <- create PayrollRun with
+          employer = employer
+          payrollId = nextPayrollId
+          timestamp = timestamp
+          totalAmount = totalAmount
+          employeeCount = length activeProfiles
+          isCompleted = True
+          authorizedAuditors = []
+          isPublic = False
+        paymentCids <- createPayments activeProfiles nextPayrollId employer
+        archive self
+        create PayrollManager with
+          admin = admin
+          currentPayrollId = nextPayrollId
+        pure payrollCid
+
+    choice WithdrawPayroll : ContractId EmployerBalance
+      with
+        employer : Party
+        amount : Decimal
+      controller admin
+      do
+        assertMsg "Amount must be greater than 0" (amount > 0.0)
+        create EmployerBalance with
+          employer = employer
+          balance = amount

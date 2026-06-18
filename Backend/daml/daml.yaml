@@ -1,6 +1,6 @@
 name: payyr-private
 version: 0.0.1
-sdk-version: 2.3.0
+sdk-version: 2.10.4
 source: .
 dependencies:
   - daml-prim

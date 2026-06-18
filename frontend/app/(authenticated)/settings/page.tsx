@@ -15,7 +15,8 @@ export default function SettingsPage() {
     timezone: "America/New_York",
     autopay: true,
     notificationEmail: "admin@payyrprivate.com",
-    ledgerEndpoint: "http://localhost:7575",
+    ledgerEndpoint:
+      process.env.NEXT_PUBLIC_DAML_API_URL || "http://127.0.0.1:7575",
   });
 
   const handleSave = () => {
@@ -159,15 +160,17 @@ export default function SettingsPage() {
                 <Label>Runtime</Label>
                 <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <span className="font-medium">Daml Sandbox / Canton</span>
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    Connected
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    Configured
                   </span>
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>JSON API</Label>
                 <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <span className="text-sm text-gray-600">localhost:7575</span>
+                  <span className="text-sm text-gray-600">
+                    {settings.ledgerEndpoint}
+                  </span>
                   <Button variant="ghost" size="sm">
                     View
                   </Button>

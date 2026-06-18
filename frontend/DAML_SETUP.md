@@ -49,17 +49,22 @@ This exposes the HTTP JSON API on `http://127.0.0.1:7575`.
 Add these values to `frontend/.env.local`:
 
 ```bash
-NEXT_PUBLIC_DAML_API_URL=http://127.0.0.1:7575
 NEXT_PUBLIC_DAML_LEDGER_ID=sandbox
-NEXT_PUBLIC_DAML_ACCESS_TOKEN=<your-jwt-token>
+DAML_API_URL=http://127.0.0.1:7575
+DAML_ACCESS_TOKEN=<your-jwt-token>
+NEXT_PUBLIC_DAML_PACKAGE_ID=9837daaf0ed0c265c8f96023158d3a085a6d2b2d4fe5f9e60ad361ecc219ca94
 NEXT_PUBLIC_DAML_PARTY_MAP={"0xEMPLOYER_WALLET":"0xEMPLOYER_WALLET::<party-suffix>","0xEMPLOYEE_WALLET":"0xEMPLOYEE_WALLET::<party-suffix>","0xAUDITOR_WALLET":"0xAUDITOR_WALLET::<party-suffix>"}
 ```
 
-The frontend now expects a real Daml access token in `NEXT_PUBLIC_DAML_ACCESS_TOKEN`.
-For local sandbox testing, generate a JWT whose Daml claims include the ledger id,
-an application id, and the parties you want to act/read as.
+The frontend proxy now expects the real Daml JWT in `DAML_ACCESS_TOKEN` on the
+server side, not in a `NEXT_PUBLIC_*` variable.
+For local sandbox testing, generate a JWT whose Daml claims include the ledger
+id, an application id, and the allocated parties you want to act/read as.
 `NEXT_PUBLIC_DAML_PARTY_MAP` maps the raw Privy wallet addresses used by the UI
 to the canonical Daml party identifiers returned by `/v1/parties/allocate`.
+`NEXT_PUBLIC_DAML_PACKAGE_ID` should match the main package id in your DAR.
+For the current build, that package id is
+`9837daaf0ed0c265c8f96023158d3a085a6d2b2d4fe5f9e60ad361ecc219ca94`.
 
 ### 4. Run Frontend
 
@@ -86,7 +91,7 @@ import { registerEmployee } from "@/lib/daml/employeeRegistry";
 // Set the current user's party for UI filtering and controller-aligned requests
 damlClient.setParty("employer@example.com");
 
-// Provide a Daml access token when not sourced from env
+// Provide a Daml access token when calling the JSON API directly
 damlClient.setAccessToken("<daml-access-token>");
 
 // Register an employee
@@ -118,5 +123,6 @@ When ready for deployment, update your frontend environment:
 ```bash
 NEXT_PUBLIC_DAML_API_URL=https://<your-json-api-host>
 NEXT_PUBLIC_DAML_LEDGER_ID=canton
-NEXT_PUBLIC_DAML_ACCESS_TOKEN=<your-canton-token>
+DAML_ACCESS_TOKEN=<your-canton-token>
+NEXT_PUBLIC_DAML_PACKAGE_ID=<your-daml-package-id>
 ```

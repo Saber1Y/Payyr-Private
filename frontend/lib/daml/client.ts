@@ -5,6 +5,7 @@ export interface DamlConfig {
   ledgerId: string;
   apiUrl: string;
   party: string;
+  accessToken: string;
 }
 
 export interface ContractRecord<T> {
@@ -14,9 +15,10 @@ export interface ContractRecord<T> {
 
 // Default config for local Daml Sandbox
 export const defaultDamlConfig: DamlConfig = {
-  ledgerId: "payyr-private",
-  apiUrl: "http://localhost:7575",
+  ledgerId: process.env.NEXT_PUBLIC_DAML_LEDGER_ID || "sandbox",
+  apiUrl: process.env.NEXT_PUBLIC_DAML_API_URL || "http://localhost:7575",
   party: "", // Set dynamically from user auth
+  accessToken: process.env.NEXT_PUBLIC_DAML_ACCESS_TOKEN || "",
 };
 
 // For Canton DevNet (when available)
@@ -24,6 +26,7 @@ export const cantonDevNetConfig: DamlConfig = {
   ledgerId: "canton",
   apiUrl: "https://sandbox.daml.com",
   party: "", // Set dynamically from user auth
+  accessToken: process.env.NEXT_PUBLIC_DAML_ACCESS_TOKEN || "",
 };
 
 export class DamlClient {
@@ -35,6 +38,15 @@ export class DamlClient {
 
   setParty(party: string) {
     this.config.party = party;
+  }
+
+  setAccessToken(accessToken: string) {
+    this.config.accessToken = accessToken;
+  }
+
+  private getApiUrl(endpoint: string): string {
+    const baseUrl = this.config.apiUrl.replace(/\/$/, "");
+    return `${baseUrl}${endpoint}`;
   }
 
   private extractResult<T>(response: unknown): T {
@@ -80,13 +92,13 @@ export class DamlClient {
     method: "GET" | "POST" | "PUT" | "DELETE" = "GET",
     body?: unknown,
   ): Promise<T> {
-    const url = `${this.config.apiUrl}${endpoint}`;
+    const url = this.getApiUrl(endpoint);
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
 
-    if (this.config.party) {
-      headers["Authorization"] = `Bearer ${this.config.party}`;
+    if (this.config.accessToken) {
+      headers["Authorization"] = `Bearer ${this.config.accessToken}`;
     }
 
     const response = await fetch(url, {
@@ -96,7 +108,21 @@ export class DamlClient {
     });
 
     if (!response.ok) {
-      throw new Error(`Daml API error: ${response.statusText}`);
+      let errorMessage = `Daml API error: ${response.statusText}`;
+
+      try {
+        const errorBody = (await response.json()) as {
+          errors?: string[];
+        };
+
+        if (Array.isArray(errorBody.errors) && errorBody.errors.length > 0) {
+          errorMessage = errorBody.errors.join("; ");
+        }
+      } catch {
+        // Ignore JSON parsing failures and use the default message.
+      }
+
+      throw new Error(errorMessage);
     }
 
     return response.json() as Promise<T>;
@@ -107,8 +133,10 @@ export class DamlClient {
     templateId: string,
     predicate?: Record<string, unknown>,
   ): Promise<ContractRecord<T>[]> {
-    const query = { templateId, ...predicate };
-    const response = await this.request<unknown>(`/contract/search`, "POST", query);
+    const response = await this.request<unknown>(`/v1/query`, "POST", {
+      templateIds: [templateId],
+      query: predicate ?? {},
+    });
     const result = this.extractResult<unknown[]>(response);
 
     if (!Array.isArray(result)) {
@@ -122,11 +150,13 @@ export class DamlClient {
 
   // Exercise choice
   async exerciseChoice<T>(
+    templateId: string,
     contractId: string,
     choice: string,
     argument: unknown,
   ): Promise<ContractRecord<T>> {
-    const response = await this.request<unknown>(`/command/exercise`, "POST", {
+    const response = await this.request<unknown>(`/v1/exercise`, "POST", {
+      templateId,
       contractId,
       choice,
       argument,
@@ -161,7 +191,7 @@ export class DamlClient {
     templateId: string,
     payload: T,
   ): Promise<ContractRecord<T>> {
-    const response = await this.request<unknown>(`/command/create`, "POST", {
+    const response = await this.request<unknown>(`/v1/create`, "POST", {
       templateId,
       payload,
     });

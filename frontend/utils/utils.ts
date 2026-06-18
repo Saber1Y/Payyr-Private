@@ -1,9 +1,20 @@
-import { formatUnits } from "viem";
 import type { PayrollRun } from "@/types/contracts";
+
+function fromLedgerAmount(value: bigint | number | string | undefined): number {
+  if (value === undefined) {
+    return 0;
+  }
+
+  if (typeof value === "bigint") {
+    return Number(value) / 1_000_000;
+  }
+
+  return Number(value);
+}
 
 export default function formatBalance(balance: bigint | undefined): number {
   if (!balance) return 0;
-  return Number(formatUnits(balance, 6));
+  return fromLedgerAmount(balance);
 }
 
 export function formatPayroll(payroll: unknown): {
@@ -30,7 +41,7 @@ export function formatPayroll(payroll: unknown): {
   return {
     id: Number(id),
     date: new Date(Number(timestamp) * 1000),
-    amount: Number(formatUnits(totalAmount, 6)),
+    amount: fromLedgerAmount(totalAmount),
     employees: Number(employeeCount),
     completed: isCompleted,
   };

@@ -2,8 +2,9 @@
 import { ContractRecord, damlClient } from "./client";
 
 export const EMPLOYEE_REGISTRY_TEMPLATE =
-  "Payyr.Private.EmployeeRegistry:EmployeeProfile";
-export const EMPLOYER_TEMPLATE = "Payyr.Private.EmployeeRegistry:Employer";
+  "#payyr-private:Payyr.Private.EmployeeRegistry:EmployeeProfile";
+export const EMPLOYER_TEMPLATE =
+  "#payyr-private:Payyr.Private.EmployeeRegistry:Employer";
 
 export interface EmployeeProfile {
   employer: string;
@@ -47,7 +48,7 @@ export async function registerEmployee(
   role: string,
   startDate: string,
 ): Promise<{ contractId: string; payload: EmployeeProfile }> {
-  return damlClient.exerciseChoice(contractId, "RegisterEmployee", {
+  return damlClient.exerciseChoice(EMPLOYER_TEMPLATE, contractId, "RegisterEmployee", {
     employee,
     name,
     salary,
@@ -63,25 +64,40 @@ export async function updateEmployee(
   newSalary: number,
   newRole: string,
 ): Promise<{ contractId: string; payload: EmployeeProfile }> {
-  return damlClient.exerciseChoice(contractId, "UpdateEmployee", {
+  return damlClient.exerciseChoice(
+    EMPLOYEE_REGISTRY_TEMPLATE,
+    contractId,
+    "UpdateEmployee",
+    {
     newName,
     newSalary,
     newRole,
-  });
+    },
+  );
 }
 
 // Deactivate employee
 export async function deactivateEmployee(
   contractId: string,
 ): Promise<{ contractId: string; payload: EmployeeProfile }> {
-  return damlClient.exerciseChoice(contractId, "DeactivateEmployee", {});
+  return damlClient.exerciseChoice(
+    EMPLOYEE_REGISTRY_TEMPLATE,
+    contractId,
+    "DeactivateEmployee",
+    {},
+  );
 }
 
 // Activate employee
 export async function activateEmployee(
   contractId: string,
 ): Promise<{ contractId: string; payload: EmployeeProfile }> {
-  return damlClient.exerciseChoice(contractId, "ActivateEmployee", {});
+  return damlClient.exerciseChoice(
+    EMPLOYEE_REGISTRY_TEMPLATE,
+    contractId,
+    "ActivateEmployee",
+    {},
+  );
 }
 
 // Grant auditor access
@@ -89,9 +105,14 @@ export async function grantAuditorAccess(
   contractId: string,
   auditor: string,
 ): Promise<{ contractId: string; payload: EmployeeProfile }> {
-  return damlClient.exerciseChoice(contractId, "GrantAuditorAccess", {
-    auditor,
-  });
+  return damlClient.exerciseChoice(
+    EMPLOYEE_REGISTRY_TEMPLATE,
+    contractId,
+    "GrantAuditorAccess",
+    {
+      auditor,
+    },
+  );
 }
 
 // Revoke auditor access
@@ -99,9 +120,14 @@ export async function revokeAuditorAccess(
   contractId: string,
   auditor: string,
 ): Promise<{ contractId: string; payload: EmployeeProfile }> {
-  return damlClient.exerciseChoice(contractId, "RevokeAuditorAccess", {
-    auditor,
-  });
+  return damlClient.exerciseChoice(
+    EMPLOYEE_REGISTRY_TEMPLATE,
+    contractId,
+    "RevokeAuditorAccess",
+    {
+      auditor,
+    },
+  );
 }
 
 // Query all employees for an employer

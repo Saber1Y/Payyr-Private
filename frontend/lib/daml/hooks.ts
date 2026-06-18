@@ -1,7 +1,6 @@
 // React hooks for Daml contract interactions
 "use client";
 
-import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as employeeRegistry from "./employeeRegistry";
 import * as payrollManager from "./payrollManager";
@@ -20,6 +19,15 @@ export function useActiveEmployees(employer: string) {
   return useQuery({
     queryKey: ["activeEmployees", employer],
     queryFn: () => employeeRegistry.getActiveEmployees(employer),
+    enabled: !!employer,
+  });
+}
+
+// Hook to query employer contracts
+export function useEmployerContracts(employer: string) {
+  return useQuery({
+    queryKey: ["employerContracts", employer],
+    queryFn: () => employeeRegistry.getEmployerContracts(employer),
     enabled: !!employer,
   });
 }
@@ -106,9 +114,18 @@ export function useActivateEmployee() {
 // Hook to query payrolls by employer
 export function usePayrollsByEmployer(employer: string) {
   return useQuery({
-    queryKey: ["payrolis", employer],
+    queryKey: ["payrolls", employer],
     queryFn: () => payrollManager.getPayrollsByEmployer(employer),
     enabled: !!employer,
+  });
+}
+
+// Hook to query payroll manager contracts
+export function usePayrollManagerContracts(admin: string) {
+  return useQuery({
+    queryKey: ["payrollManagers", admin],
+    queryFn: () => payrollManager.getPayrollManagerContracts(admin),
+    enabled: !!admin,
   });
 }
 
@@ -130,7 +147,33 @@ export function useCreatePayrollRun() {
         data.timestamp,
       ),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["payrolis"] });
+      queryClient.invalidateQueries({ queryKey: ["payrolls"] });
+    },
+  });
+}
+
+// Hook to grant payroll auditor access
+export function useGrantPayrollAuditorAccess() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: { contractId: string; auditor: string }) =>
+      payrollManager.grantAuditorAccessPayroll(data.contractId, data.auditor),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payrolls"] });
+    },
+  });
+}
+
+// Hook to revoke payroll auditor access
+export function useRevokePayrollAuditorAccess() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: { contractId: string; auditor: string }) =>
+      payrollManager.revokeAuditorAccessPayroll(data.contractId, data.auditor),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payrolls"] });
     },
   });
 }
@@ -144,6 +187,15 @@ export function useClaimPayment() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payments"] });
     },
+  });
+}
+
+// Hook to query all employee payments
+export function useEmployeePayments(employee: string) {
+  return useQuery({
+    queryKey: ["payments", employee],
+    queryFn: () => payrollManager.getEmployeePayments(employee),
+    enabled: !!employee,
   });
 }
 

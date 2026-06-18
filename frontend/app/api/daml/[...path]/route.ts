@@ -1,15 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const defaultApiUrl =
-  process.env.DAML_API_URL ||
-  process.env.NEXT_PUBLIC_DAML_API_URL ||
-  "http://127.0.0.1:7575";
+function getApiUrl(): string {
+  return (
+    process.env.DAML_API_URL ||
+    process.env.NEXT_PUBLIC_DAML_API_URL ||
+    "http://127.0.0.1:7575"
+  );
+}
 
-const accessToken =
-  process.env.DAML_ACCESS_TOKEN || process.env.NEXT_PUBLIC_DAML_ACCESS_TOKEN;
+function getAccessToken(): string {
+  return (
+    process.env.DAML_ACCESS_TOKEN ||
+    process.env.NEXT_PUBLIC_DAML_ACCESS_TOKEN ||
+    ""
+  );
+}
 
 function buildTargetUrl(pathSegments: string[]): string {
-  const baseUrl = defaultApiUrl.replace(/\/$/, "");
+  const baseUrl = getApiUrl().replace(/\/$/, "");
   return `${baseUrl}/${pathSegments.join("/")}`;
 }
 
@@ -17,12 +25,22 @@ async function forwardRequest(
   request: NextRequest,
   pathSegments: string[],
 ): Promise<NextResponse> {
+  const accessToken = getAccessToken();
+
+  if (!accessToken) {
+    return NextResponse.json(
+      {
+        errors: [
+          "Server is missing DAML_ACCESS_TOKEN. Add it to frontend/.env.local and restart Next.js.",
+        ],
+      },
+      { status: 500 },
+    );
+  }
+
   const headers = new Headers();
   headers.set("Content-Type", "application/json");
-
-  if (accessToken) {
-    headers.set("Authorization", `Bearer ${accessToken}`);
-  }
+  headers.set("Authorization", `Bearer ${accessToken}`);
 
   const body =
     request.method === "GET" || request.method === "HEAD"

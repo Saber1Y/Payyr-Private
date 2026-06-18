@@ -2,172 +2,116 @@
 
 export const dynamic = "force-dynamic";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import {
-  DollarSign,
-  Users,
-  Calendar,
-  TrendingUp,
-  ArrowUpRight,
-  ShieldCheck,
-  UserPlus,
-  Wallet,
-  Lock,
-} from "lucide-react";
-import { useReadContract, useAccount } from "wagmi";
-import formatBalance, { formatPayroll } from "@/utils/utils";
-import type { PayrollRun } from "@/types/contracts";
-import PayrollContractABi from "../../../lib/abi/PayrollManager.json";
-import EmployeeRegistryABI from "../../../lib/abi/EmployeeRegistry.json";
+import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-
-const PAYROLL_REGISTRY_ADDRESS =
-  "0x1739715A3452BF1e336305cf8f9542d177cEa03A" as const;
-const EMPLOYEE_REGISTRY_ADDRESS =
-  "0x20B3dB45a351E92673112064A3F01951115eD6B7" as const;
+import { usePrivy } from "@privy-io/react-auth";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Calendar,
+  DollarSign,
+  Lock,
+  ShieldCheck,
+  TrendingUp,
+  Users,
+  Wallet,
+} from "lucide-react";
+import {
+  useEmployeesByEmployer,
+  useEmployerContracts,
+  usePayrollsByEmployer,
+} from "@/lib/daml/hooks";
+import { damlClient } from "@/lib/daml/client";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { address } = useAccount();
-  // Get total contract balance (admin view)
-  const { data: totalContractBalance } = useReadContract({
-    address: PAYROLL_REGISTRY_ADDRESS,
-    abi: PayrollContractABi.abi,
-    functionName: "getTotalBalance",
-  });
+  const { user, authenticated } = usePrivy();
+  const employerParty = user?.wallet?.address || "";
 
-  // Get current payroll ID
-  const { data: currentPayrollId } = useReadContract({
-    address: PAYROLL_REGISTRY_ADDRESS,
-    abi: PayrollContractABi.abi,
-    functionName: "currentPayrollId",
-  });
+  useEffect(() => {
+    damlClient.setParty(employerParty);
+  }, [employerParty]);
 
-  // Get total payroll runs
-  const { data: totalPayrollRuns } = useReadContract({
-    address: PAYROLL_REGISTRY_ADDRESS,
-    abi: PayrollContractABi.abi,
-    functionName: "totalPayrollRuns",
-  });
+  const {
+    data: employerContracts,
+    error: employerError,
+    isLoading: isEmployerLoading,
+  } = useEmployerContracts(employerParty);
+  const {
+    data: employees,
+    error: employeesError,
+    isLoading: isEmployeesLoading,
+  } = useEmployeesByEmployer(employerParty);
+  const {
+    data: payrolls,
+    error: payrollsError,
+    isLoading: isPayrollsLoading,
+  } = usePayrollsByEmployer(employerParty);
 
-  // Get the last 3 payroll runs
-  const { data: payroll1 } = useReadContract({
-    address: PAYROLL_REGISTRY_ADDRESS,
-    abi: PayrollContractABi.abi,
-    functionName: "payrollRuns",
-    args: [currentPayrollId as bigint],
-    query: {
-      enabled: !!currentPayrollId && Number(currentPayrollId) > 0,
-    },
-  });
+  const isEmployer = (employerContracts?.length ?? 0) > 0;
+  const employeeRecords = employees ?? [];
+  const activeEmployees = employeeRecords.filter(
+    (employee) => employee.payload.isActive,
+  );
+  const monthlyPayrollTotal = activeEmployees.reduce(
+    (sum, employee) => sum + Number(employee.payload.salary),
+    0,
+  );
+  const recentPayrolls = useMemo(() => {
+    return [...(payrolls ?? [])]
+      .sort(
+        (left, right) =>
+          Number(right.payload.payrollId) - Number(left.payload.payrollId),
+      )
+      .slice(0, 3);
+  }, [payrolls]);
+  const latestPayroll = recentPayrolls[0]?.payload;
+  const latestPayrollAmount = latestPayroll
+    ? Number(latestPayroll.totalAmount)
+    : 0;
+  const queryError = employerError || employeesError || payrollsError;
+  const isLoading =
+    isEmployerLoading || isEmployeesLoading || isPayrollsLoading;
 
-  const { data: payroll2 } = useReadContract({
-    address: PAYROLL_REGISTRY_ADDRESS,
-    abi: PayrollContractABi.abi,
-    functionName: "payrollRuns",
-    args: [
-      currentPayrollId && typeof currentPayrollId === "string"
-        ? BigInt(currentPayrollId) - BigInt(1)
-        : BigInt(0),
-    ],
-    query: {
-      enabled: !!currentPayrollId && Number(currentPayrollId) > 1,
-    },
-  });
+  if (!authenticated) {
+    return <div>Please log in to view your payroll dashboard.</div>;
+  }
 
-  const { data: payroll3 } = useReadContract({
-    address: PAYROLL_REGISTRY_ADDRESS,
-    abi: PayrollContractABi.abi,
-    functionName: "payrollRuns",
-    args: [
-      currentPayrollId && typeof currentPayrollId === "string"
-        ? BigInt(currentPayrollId) - BigInt(2)
-        : BigInt(0),
-    ],
-    query: {
-      enabled: !!currentPayrollId && Number(currentPayrollId) > 2,
-    },
-  });
-
-  // Check if user is registered as employer
-  const { data: isEmployer } = useReadContract({
-    address: EMPLOYEE_REGISTRY_ADDRESS,
-    abi: EmployeeRegistryABI.abi,
-    functionName: "isEmployer",
-    args: [address as `0x${string}`],
-    query: {
-      enabled: !!address,
-    },
-  });
-
-  // Get employer's employee count
-  const { data: employerEmployees } = useReadContract({
-    address: EMPLOYEE_REGISTRY_ADDRESS,
-    abi: EmployeeRegistryABI.abi,
-    functionName: "getEmployerEmployees",
-    args: [address as `0x${string}`],
-    query: {
-      enabled: !!address && isEmployer === true,
-    },
-  });
-
-  // Get employer's balance
-  const { data: employerBalance } = useReadContract({
-    address: PAYROLL_REGISTRY_ADDRESS,
-    abi: PayrollContractABi.abi,
-    functionName: "getMyBalance",
-    query: {
-      enabled: !!address && isEmployer === true,
-    },
-  });
-
-  const { data: totalContractBalances } = useReadContract({
-    address: PAYROLL_REGISTRY_ADDRESS,
-    abi: PayrollContractABi.abi,
-    functionName: "getTotalBalance",
-  });
-
-  const displayBalance: bigint = (totalContractBalances ??
-    employerBalance ??
-    0n) as bigint;
-
-  const formattedDisplayBalance = formatBalance(displayBalance);
-
-  const recentPayrolls = [
-    formatPayroll(payroll1 as PayrollRun | null),
-    formatPayroll(payroll2 as PayrollRun | null),
-    formatPayroll(payroll3 as PayrollRun | null),
-  ].filter(Boolean);
-
-  const lastPayroll = recentPayrolls[0];
+  if (isLoading && !isEmployer) {
+    return (
+      <div className="min-h-screen bg-[#114277] p-4 md:p-8">
+        <Card>
+          <CardContent className="pt-6 text-gray-600">
+            Loading employer workspace...
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-4 md:p-8 bg-[#114277] min-h-screen">
+    <div className="min-h-screen bg-[#114277] p-4 md:p-8">
       <div className="mb-6 md:mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold text-white">Dashboard</h1>
-        <p className="text-gray-300 mt-2 text-sm md:text-base">
-          Overview of your payroll system on Arc Network
+        <h1 className="text-2xl font-bold text-white md:text-3xl">Dashboard</h1>
+        <p className="mt-2 text-sm text-gray-300 md:text-base">
+          Overview of your Daml payroll workspace and recent ledger activity.
         </p>
       </div>
 
-      {/* Getting Started Card - Show if not registered as employer */}
-      {address && isEmployer === false && (
-        <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200 gap-2">
+      {!isEmployer ? (
+        <Card className="gap-2 border-blue-200 bg-gradient-to-r from-blue-50 to-cyan-50">
           <CardContent className="pt-6">
-            <div className="flex flex-col md:flex-row items-center gap-4">
-              <div className="flex-shrink-0">
-                <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center">
-                  <ShieldCheck className="h-8 w-8 text-blue-600" />
-                </div>
+            <div className="flex flex-col items-center gap-4 md:flex-row">
+              <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full bg-blue-100">
+                <ShieldCheck className="h-8 w-8 text-blue-600" />
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Get Started as an Employer
+                <h3 className="mb-2 text-lg font-semibold text-gray-900">
+                  Set Up Your Employer Workspace
                 </h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Register as an employer to start managing payroll for your
-                  team. It only takes one transaction and costs ~$0.08.
+                <p className="mb-4 text-sm text-gray-600">
+                  Create your employer contract, add employees, and start
+                  running private payroll from the Daml ledger.
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <Button
@@ -175,15 +119,7 @@ export default function DashboardPage() {
                     className="gap-2 bg-blue-600 hover:bg-blue-700"
                   >
                     <ShieldCheck className="h-4 w-4" />
-                    Register as Employer
-                  </Button>
-                  <Button
-                    onClick={() => router.push("/employees")}
-                    variant="outline"
-                    className="gap-2 text-black"
-                  >
-                    <UserPlus className="h-4 w-4" />
-                    Manage Employees
+                    Open Employees
                   </Button>
                   <Button
                     onClick={() => router.push("/payroll")}
@@ -191,397 +127,282 @@ export default function DashboardPage() {
                     className="gap-2 text-black"
                   >
                     <Wallet className="h-4 w-4" />
-                    Fund Payroll
+                    Open Payroll
                   </Button>
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
-      )}
-
-      {/* Stats Cards - Show employer-specific stats if registered */}
-      {isEmployer === true ? (
-        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Your Balance
-              </CardTitle>
-              <DollarSign className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-gray-900">
-                $
-                {formattedDisplayBalance.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                {address === "0x11f7eaC93C9DD552DFD657BE52007A25E200f356"
-                  ? "Total in contract"
-                  : "Available for payroll"}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xs md:text-sm font-medium text-gray-600">
-                Your Employees
-              </CardTitle>
-              <Users className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-xl md:text-2xl font-bold text-gray-900">
-                {Array.isArray(employerEmployees)
-                  ? employerEmployees.length
-                  : 0}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">Active team members</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xs md:text-sm font-medium text-gray-600">
-                Total Payroll Runs
-              </CardTitle>
-              <Users className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-xl md:text-2xl font-bold text-gray-900">
-                {totalPayrollRuns?.toString() ?? "0"}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">All time executions</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xs md:text-sm font-medium text-gray-600">
-                Last Payroll Amount
-              </CardTitle>
-              <TrendingUp className="h-4 w-4 text-indigo-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-xl md:text-2xl font-bold text-gray-900">
-                $
-                {lastPayroll
-                  ? lastPayroll.amount.toLocaleString("en-US", {
-                      minimumFractionDigits: 2,
-                    })
-                  : "0.00"}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                {lastPayroll?.employees ?? 0} employees paid
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xs md:text-sm font-medium text-gray-600">
-                Last Payroll Date
-              </CardTitle>
-              <Calendar className="h-4 w-4 text-purple-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-xl md:text-2xl font-bold text-gray-900">
-                {lastPayroll
-                  ? lastPayroll.date.toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                    })
-                  : "N/A"}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                {lastPayroll
-                  ? lastPayroll.date.toLocaleDateString("en-US", {
-                      year: "numeric",
-                    })
-                  : "No payrolls yet"}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg text-black font-semibold">
-                Recent Payroll Runs
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {recentPayrolls.length === 0 ? (
-                <div className="text-center py-4 text-gray-500">
-                  No payroll runs yet
+        <>
+          <div className="mb-6 grid grid-cols-2 gap-4 md:mb-8 lg:grid-cols-4 md:gap-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-xs font-medium text-gray-600 md:text-sm">
+                  Active Employees
+                </CardTitle>
+                <Users className="h-4 w-4 text-blue-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-xl font-bold text-gray-900 md:text-2xl">
+                  {activeEmployees.length}
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  {recentPayrolls.map((payroll, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between py-2 border-b last:border-0"
-                    >
-                      <div className="flex items-center gap-3">
-                        <ArrowUpRight className="h-4 w-4 text-red-600" />
+                <p className="mt-1 text-xs text-gray-500">
+                  {employeeRecords.length} total employee records
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-xs font-medium text-gray-600 md:text-sm">
+                  Monthly Payroll
+                </CardTitle>
+                <DollarSign className="h-4 w-4 text-green-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-xl font-bold text-gray-900 md:text-2xl">
+                  ${monthlyPayrollTotal.toLocaleString()}
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  Based on active employee contracts
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-xs font-medium text-gray-600 md:text-sm">
+                  Payroll Runs
+                </CardTitle>
+                <TrendingUp className="h-4 w-4 text-indigo-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-xl font-bold text-gray-900 md:text-2xl">
+                  {payrolls?.length ?? 0}
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  Completed ledger payroll runs
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-xs font-medium text-gray-600 md:text-sm">
+                  Latest Payroll
+                </CardTitle>
+                <Calendar className="h-4 w-4 text-purple-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-xl font-bold text-gray-900 md:text-2xl">
+                  ${latestPayrollAmount.toLocaleString()}
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  {latestPayroll
+                    ? new Date(latestPayroll.timestamp).toLocaleDateString()
+                    : "No payrolls yet"}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 md:gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-black">
+                  Recent Payroll Runs
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <div className="py-4 text-center text-gray-500">
+                    Loading payroll activity...
+                  </div>
+                ) : recentPayrolls.length === 0 ? (
+                  <div className="py-4 text-center text-gray-500">
+                    No payroll runs yet.
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {recentPayrolls.map((payroll) => (
+                      <div
+                        key={payroll.contractId}
+                        className="flex items-center justify-between border-b py-2 last:border-0"
+                      >
                         <div>
                           <p className="font-medium text-gray-900">
-                            Monthly Payroll
+                            Payroll #{Number(payroll.payload.payrollId)}
                           </p>
                           <p className="text-sm text-gray-500">
-                            {payroll?.date.toLocaleDateString("en-US", {
+                            {new Date(
+                              payroll.payload.timestamp,
+                            ).toLocaleDateString("en-US", {
                               month: "short",
                               day: "numeric",
                               year: "numeric",
                             })}
                           </p>
                         </div>
+                        <div className="text-right">
+                          <p className="font-medium text-red-600">
+                            -$
+                            {Number(
+                              payroll.payload.totalAmount,
+                            ).toLocaleString()}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {Number(payroll.payload.employeeCount)} employees
+                          </p>
+                          <p className="text-xs text-green-600">
+                            {payroll.payload.isCompleted ? "Completed" : "Open"}
+                          </p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <span className="font-medium text-red-600">
-                          -$
-                          {payroll?.amount.toLocaleString("en-US", {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}
-                        </span>
-                        <p className="text-xs text-gray-500">
-                          {payroll?.employees} employees
-                        </p>
-                        {payroll?.completed && (
-                          <p className="text-xs text-green-600">✓ Completed</p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold text-black">
-                System Status
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Arc Network Connection</span>
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    Connected
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Smart Contract Status</span>
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    Active
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Current Payroll ID</span>
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                    #{currentPayrollId?.toString() ?? "0"}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Funds Available</span>
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    {totalContractBalance &&
-                    (totalContractBalance as bigint) > 0n
-                      ? "Sufficient"
-                      : "Low"}
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg text-black font-semibold">
-              Recent Payroll Runs
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {recentPayrolls.length === 0 ? (
-              <div className="text-center py-4 text-gray-500">
-                No payroll runs yet
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {recentPayrolls.map((payroll, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between py-2 border-b last:border-0"
-                  >
-                    <div className="flex items-center gap-3">
-                      <ArrowUpRight className="h-4 w-4 text-red-600" />
-                      <div>
-                        <p className="font-medium text-gray-900">
-                          Monthly Payroll
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          {payroll?.date.toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <span className="font-medium text-red-600">
-                        -$
-                        {payroll?.amount.toLocaleString("en-US", {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
-                      </span>
-                      <p className="text-xs text-gray-500">
-                        {payroll?.employees} employees
-                      </p>
-                      {payroll?.completed && (
-                        <p className="text-xs text-green-600">✓ Completed</p>
-                      )}
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                )}
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold">
-              System Status
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">Arc Network Connection</span>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  Connected
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">Smart Contract Status</span>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  Active
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">Current Payroll ID</span>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                  #{currentPayrollId?.toString() ?? "0"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">Funds Available</span>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  {totalContractBalance && (totalContractBalance as bigint) > 0n
-                    ? "Sufficient"
-                    : "Low"}
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Privacy Features Section */}
-      {isEmployer === true && (
-        <div className="mt-6 md:mt-8">
-          <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-blue-50">
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Lock className="h-5 w-5 text-purple-600" />
-                <CardTitle className="text-black">Privacy & Compliance</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 bg-white rounded-lg border border-purple-200">
-                  <h3 className="font-semibold text-black mb-2">🔐 Private Salary Records</h3>
-                  <p className="text-sm text-gray-700 mb-3">
-                    Employee salaries are encrypted and only visible to authorized parties.
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full text-purple-600 border-purple-200"
-                    onClick={() => router.push("/auditors")}
-                  >
-                    Manage Access
-                  </Button>
-                </div>
-
-                <div className="p-4 bg-white rounded-lg border border-blue-200">
-                  <h3 className="font-semibold text-black mb-2">👥 Employee Privacy</h3>
-                  <p className="text-sm text-gray-700 mb-3">
-                    Each employee only sees their own payments and details.
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full text-blue-600 border-blue-200"
-                    onClick={() => router.push("/employee-portal")}
-                  >
-                    Employee Portal
-                  </Button>
-                </div>
-
-                <div className="p-4 bg-white rounded-lg border border-green-200">
-                  <h3 className="font-semibold text-black mb-2">✅ Auditor Compliance</h3>
-                  <p className="text-sm text-gray-700 mb-3">
-                    Grant auditors access to verify payroll execution privately.
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full text-green-600 border-green-200"
-                    onClick={() => router.push("/privacy-demo")}
-                  >
-                    See Demo
-                  </Button>
-                </div>
-              </div>
-
-              <div className="p-4 bg-white rounded-lg border border-indigo-200">
-                <h3 className="font-semibold text-indigo-900 mb-2">🎯 Privacy Status</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-                  <div>
-                    <p className="text-gray-600">Payroll Privacy</p>
-                    <p className="font-semibold text-green-600">✓ Enabled</p>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-black">
+                  Ledger Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Daml JSON API</span>
+                    <span
+                      className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                        queryError
+                          ? "bg-red-100 text-red-800"
+                          : "bg-green-100 text-green-800"
+                      }`}
+                    >
+                      {queryError ? "Needs Attention" : "Connected"}
+                    </span>
                   </div>
-                  <div>
-                    <p className="text-gray-600">Salary Visibility</p>
-                    <p className="font-semibold text-green-600">✓ Private</p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Employer Contract</span>
+                    <span className="inline-flex rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+                      Registered
+                    </span>
                   </div>
-                  <div>
-                    <p className="text-gray-600">Auditor Access</p>
-                    <p className="font-semibold text-green-600">✓ Controlled</p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Current Payroll ID</span>
+                    <span className="inline-flex rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
+                      #{latestPayroll ? Number(latestPayroll.payrollId) : 0}
+                    </span>
                   </div>
-                  <div>
-                    <p className="text-gray-600">Public Exposure</p>
-                    <p className="font-semibold text-green-600">✓ None</p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Private Payroll Mode</span>
+                    <span className="inline-flex rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-800">
+                      Enabled
+                    </span>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="mt-6 md:mt-8">
+            <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-blue-50">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Lock className="h-5 w-5 text-purple-600" />
+                  <CardTitle className="text-black">
+                    Privacy & Compliance
+                  </CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <div className="rounded-lg border border-purple-200 bg-white p-4">
+                    <h3 className="mb-2 font-semibold text-black">
+                      Private Salary Records
+                    </h3>
+                    <p className="mb-3 text-sm text-gray-700">
+                      Salary and employee contracts stay scoped to the relevant
+                      Daml parties.
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full text-purple-600 border-purple-200"
+                      onClick={() => router.push("/auditors")}
+                    >
+                      Manage Access
+                    </Button>
+                  </div>
+
+                  <div className="rounded-lg border border-blue-200 bg-white p-4">
+                    <h3 className="mb-2 font-semibold text-black">
+                      Employee Privacy
+                    </h3>
+                    <p className="mb-3 text-sm text-gray-700">
+                      Each employee sees only their own payment contracts and
+                      claim status.
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full text-blue-600 border-blue-200"
+                      onClick={() => router.push("/employee-portal")}
+                    >
+                      Employee Portal
+                    </Button>
+                  </div>
+
+                  <div className="rounded-lg border border-green-200 bg-white p-4">
+                    <h3 className="mb-2 font-semibold text-black">
+                      Auditor Compliance
+                    </h3>
+                    <p className="mb-3 text-sm text-gray-700">
+                      Authorize auditors on a payroll-run basis without opening
+                      data publicly.
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full text-green-600 border-green-200"
+                      onClick={() => router.push("/privacy-demo")}
+                    >
+                      See Demo
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-indigo-200 bg-white p-4">
+                  <h3 className="mb-2 font-semibold text-indigo-900">
+                    Workspace Shortcuts
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => router.push("/employees")}
+                    >
+                      <UserPlus className="h-4 w-4" />
+                      Manage Employees
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => router.push("/payroll")}
+                    >
+                      <Wallet className="h-4 w-4" />
+                      Run Payroll
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </>
       )}
     </div>
   );

@@ -9,11 +9,7 @@ function getApiUrl(): string {
 }
 
 function getAccessToken(): string {
-  return (
-    process.env.DAML_ACCESS_TOKEN ||
-    process.env.NEXT_PUBLIC_DAML_ACCESS_TOKEN ||
-    ""
-  );
+  return process.env.DAML_ACCESS_TOKEN || "";
 }
 
 function buildTargetUrl(pathSegments: string[]): string {

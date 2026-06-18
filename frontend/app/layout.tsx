@@ -1,13 +1,7 @@
 import type { Metadata } from "next";
-import { Sora } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { QueryProviders } from "@/config/WagmiProviders";
-
-const sora = Sora({
-  variable: "--font-sora",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "Payyr Private",
@@ -21,7 +15,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${sora.variable} antialiased bg-gray-50`}>
+      <body className="antialiased bg-gray-50">
         <QueryProviders>
           <Providers>
             {children}

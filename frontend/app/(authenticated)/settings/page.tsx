@@ -46,7 +46,7 @@ export default function SettingsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         {/* Company Settings */}
-        <Card>
+        <Card className="text-black">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <SettingsIcon className="h-5 w-5" />
@@ -103,7 +103,7 @@ export default function SettingsPage() {
         </Card>
 
         {/* Payroll Settings */}
-        <Card>
+        <Card className="text-black">
           <CardHeader>
             <CardTitle>Workspace Settings</CardTitle>
           </CardHeader>
@@ -150,7 +150,7 @@ export default function SettingsPage() {
         </Card>
 
         {/* Ledger Information */}
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 text-black">
           <CardHeader>
             <CardTitle>Ledger Information</CardTitle>
           </CardHeader>

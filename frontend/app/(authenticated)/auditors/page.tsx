@@ -138,7 +138,7 @@ export default function AuditorsPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6">
-          <Card>
+          <Card className="text-black">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-600">
                 Active Permissions
@@ -155,7 +155,7 @@ export default function AuditorsPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="text-black">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-600">
                 Unique Auditors
@@ -172,7 +172,7 @@ export default function AuditorsPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="text-black">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-600">
                 Payrolls Shared
@@ -191,7 +191,7 @@ export default function AuditorsPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] md:gap-6">
-          <Card>
+          <Card className="text-black">
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-black">
                 Grant Auditor Access
@@ -241,7 +241,7 @@ export default function AuditorsPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="text-black">
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-black">
                 Active Auditor Permissions
@@ -301,7 +301,7 @@ export default function AuditorsPage() {
           </Card>
         </div>
 
-        <Card className="border-blue-200 bg-blue-50">
+        <Card className="border-blue-200 bg-blue-50 text-black">
           <CardHeader>
             <CardTitle className="text-lg font-semibold text-blue-900">
               Privacy on Daml

@@ -52,11 +52,14 @@ Add these values to `frontend/.env.local`:
 NEXT_PUBLIC_DAML_API_URL=http://127.0.0.1:7575
 NEXT_PUBLIC_DAML_LEDGER_ID=sandbox
 NEXT_PUBLIC_DAML_ACCESS_TOKEN=<your-jwt-token>
+NEXT_PUBLIC_DAML_PARTY_MAP={"0xEMPLOYER_WALLET":"0xEMPLOYER_WALLET::<party-suffix>","0xEMPLOYEE_WALLET":"0xEMPLOYEE_WALLET::<party-suffix>","0xAUDITOR_WALLET":"0xAUDITOR_WALLET::<party-suffix>"}
 ```
 
 The frontend now expects a real Daml access token in `NEXT_PUBLIC_DAML_ACCESS_TOKEN`.
 For local sandbox testing, generate a JWT whose Daml claims include the ledger id,
 an application id, and the parties you want to act/read as.
+`NEXT_PUBLIC_DAML_PARTY_MAP` maps the raw Privy wallet addresses used by the UI
+to the canonical Daml party identifiers returned by `/v1/parties/allocate`.
 
 ### 4. Run Frontend
 

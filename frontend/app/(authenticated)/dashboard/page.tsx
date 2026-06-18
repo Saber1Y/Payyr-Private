@@ -23,11 +23,12 @@ import {
   usePayrollsByEmployer,
 } from "@/lib/daml/hooks";
 import { damlClient } from "@/lib/daml/client";
+import { resolveDamlParty } from "@/lib/daml/partyMapper";
 
 export default function DashboardPage() {
   const router = useRouter();
   const { user, authenticated } = usePrivy();
-  const employerParty = user?.wallet?.address || "";
+  const employerParty = resolveDamlParty(user?.wallet?.address);
 
   useEffect(() => {
     damlClient.setParty(employerParty);

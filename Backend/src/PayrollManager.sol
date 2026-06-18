@@ -16,6 +16,7 @@ contract PayrollManager is AccessControl, ReentrancyGuard, Pausable {
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant PAYROLL_OPERATOR_ROLE = keccak256("PAYROLL_OPERATOR_ROLE");
     bytes32 public constant HR_ROLE = keccak256("HR_ROLE");
+    bytes32 public constant AUDITOR_ROLE = keccak256("AUDITOR_ROLE");
 
     IERC20 public immutable usdc;
     IEmployeeRegistry public employeeRegistry;
@@ -30,9 +31,19 @@ contract PayrollManager is AccessControl, ReentrancyGuard, Pausable {
         bool isCompleted;
     }
 
+    struct PayrollBatchVisibility {
+        uint256 payrollId;
+        address[] authorizedAuditors;
+        bool isPublic;
+        uint256 createdAt;
+    }
+
     mapping(uint256 => PayrollRun) public payrollRuns;
     mapping(uint256 => mapping(address => bool)) public payrollClaims;
+    mapping(uint256 => mapping(address => uint256)) public employeePaymentAmounts;
     mapping(address => uint256) public employerBalances;
+    mapping(uint256 => PayrollBatchVisibility) public payrollVisibility;
+    mapping(uint256 => mapping(address => bool)) public auditorPayrollAccess;
     
     uint256 public currentPayrollId;
     uint256 public totalPayrollRuns;
@@ -42,6 +53,8 @@ contract PayrollManager is AccessControl, ReentrancyGuard, Pausable {
     event PayrollClaimed(uint256 indexed payrollId, address indexed employee, uint256 amount);
     event EmployerWithdrawn(address indexed employer, uint256 amount);
     event EmergencyWithdraw(address indexed admin, uint256 amount);
+    event AuditorAccessGranted(uint256 indexed payrollId, address indexed auditor, address indexed employer);
+    event AuditorAccessRevoked(uint256 indexed payrollId, address indexed auditor, address indexed employer);
 
     error InsufficientBalance();
     error InvalidEmployee();
@@ -109,6 +122,14 @@ contract PayrollManager is AccessControl, ReentrancyGuard, Pausable {
             isCompleted: false
         });
 
+        // Initialize visibility as private by default
+        payrollVisibility[currentPayrollId] = PayrollBatchVisibility({
+            payrollId: currentPayrollId,
+            authorizedAuditors: new address[](0),
+            isPublic: false,
+            createdAt: block.timestamp
+        });
+
         // Execute payments
         for (uint256 i = 0; i < employees.length; i++) {
             address employee = employees[i];
@@ -119,6 +140,7 @@ contract PayrollManager is AccessControl, ReentrancyGuard, Pausable {
                 require(success, "Payment failed");
                 
                 payrollClaims[currentPayrollId][employee] = true;
+                employeePaymentAmounts[currentPayrollId][employee] = salary;
                 emit PayrollClaimed(currentPayrollId, employee, salary);
             }
         }
@@ -197,6 +219,118 @@ contract PayrollManager is AccessControl, ReentrancyGuard, Pausable {
      */
     function setEmployeeRegistry(address _employeeRegistry) external onlyRole(ADMIN_ROLE) {
         employeeRegistry = IEmployeeRegistry(_employeeRegistry);
+    }
+
+    /**
+     * @dev Grant auditor access to a specific payroll batch
+     * @param _payrollId Payroll batch ID
+     * @param _auditor Auditor address
+     */
+    function grantAuditorAccess(uint256 _payrollId, address _auditor) external onlyRole(HR_ROLE) {
+        require(_payrollId > 0 && _payrollId <= currentPayrollId, "Invalid payroll ID");
+        require(payrollRuns[_payrollId].employer == msg.sender, "Only employer can grant auditor access");
+        require(_auditor != address(0), "Invalid auditor address");
+        
+        auditorPayrollAccess[_payrollId][_auditor] = true;
+        emit AuditorAccessGranted(_payrollId, _auditor, msg.sender);
+    }
+
+    /**
+     * @dev Revoke auditor access to a specific payroll batch
+     * @param _payrollId Payroll batch ID
+     * @param _auditor Auditor address
+     */
+    function revokeAuditorAccess(uint256 _payrollId, address _auditor) external onlyRole(HR_ROLE) {
+        require(_payrollId > 0 && _payrollId <= currentPayrollId, "Invalid payroll ID");
+        require(payrollRuns[_payrollId].employer == msg.sender, "Only employer can revoke auditor access");
+        
+        auditorPayrollAccess[_payrollId][_auditor] = false;
+        emit AuditorAccessRevoked(_payrollId, _auditor, msg.sender);
+    }
+
+    /**
+     * @dev Check if caller has permission to view payroll details
+     * @param _payrollId Payroll batch ID
+     * @param _requester Address requesting access
+     * @return True if requester can view the payroll batch
+     */
+    function hasPayrollVisibility(uint256 _payrollId, address _requester) public view returns (bool) {
+        require(_payrollId > 0 && _payrollId <= currentPayrollId, "Invalid payroll ID");
+        
+        PayrollRun memory payroll = payrollRuns[_payrollId];
+        
+        // Employer can always see their own payroll
+        if (payroll.employer == _requester) {
+            return true;
+        }
+        
+        // Auditors with access can see payroll
+        if (auditorPayrollAccess[_payrollId][_requester]) {
+            return true;
+        }
+        
+        // Admin can see all
+        if (hasRole(ADMIN_ROLE, _requester)) {
+            return true;
+        }
+        
+        return false;
+    }
+
+    /**
+     * @dev Get payroll batch details (with visibility check)
+     * @param _payrollId Payroll batch ID
+     */
+    function getPayrollDetails(uint256 _payrollId) external view returns (
+        uint256 id,
+        address employer,
+        uint256 timestamp,
+        uint256 totalAmount,
+        uint256 employeeCount,
+        bool isCompleted
+    ) {
+        require(hasPayrollVisibility(_payrollId, msg.sender), "No permission to view this payroll batch");
+        
+        PayrollRun memory payroll = payrollRuns[_payrollId];
+        return (
+            payroll.id,
+            payroll.employer,
+            payroll.timestamp,
+            payroll.totalAmount,
+            payroll.employeeCount,
+            payroll.isCompleted
+        );
+    }
+
+    /**
+     * @dev Get employee's payment amount from a payroll batch
+     * @param _payrollId Payroll batch ID
+     * @param _employee Employee address
+     */
+    function getEmployeePayment(uint256 _payrollId, address _employee) external view returns (uint256) {
+        require(_payrollId > 0 && _payrollId <= currentPayrollId, "Invalid payroll ID");
+        
+        // Employee can see their own payment
+        if (msg.sender == _employee) {
+            return employeePaymentAmounts[_payrollId][_employee];
+        }
+        
+        // Employer can see all employee payments from their payroll
+        if (payrollRuns[_payrollId].employer == msg.sender) {
+            return employeePaymentAmounts[_payrollId][_employee];
+        }
+        
+        // Auditors with access can see employee payments
+        if (auditorPayrollAccess[_payrollId][msg.sender]) {
+            return employeePaymentAmounts[_payrollId][_employee];
+        }
+        
+        // Admin can see all
+        if (hasRole(ADMIN_ROLE, msg.sender)) {
+            return employeePaymentAmounts[_payrollId][_employee];
+        }
+        
+        revert("No permission to view this payment");
     }
 
     /**

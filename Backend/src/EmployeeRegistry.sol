@@ -155,10 +155,10 @@ contract EmployeeRegistry is AccessControl {
     }
 
     /**
-     * @dev Get employee information
+     * @dev Get employee information with privacy controls
      * @param _employee Employee address
      * @return name Employee name
-     * @return salary Employee salary
+     * @return salary Employee salary (0 if no permission)
      * @return isActive Employee status
      */
     function getEmployee(address _employee) external view returns (
@@ -167,7 +167,24 @@ contract EmployeeRegistry is AccessControl {
         bool isActive
     ) {
         Employee memory emp = employees[_employee];
-        return (emp.name, emp.salary, emp.isActive);
+        
+        // Caller is the employee - can see their full salary
+        if (msg.sender == _employee) {
+            return (emp.name, emp.salary, emp.isActive);
+        }
+        
+        // Caller is the employer - can see employee's salary
+        if (msg.sender == emp.employer) {
+            return (emp.name, emp.salary, emp.isActive);
+        }
+        
+        // Caller is admin - can see everything
+        if (hasRole(ADMIN_ROLE, msg.sender)) {
+            return (emp.name, emp.salary, emp.isActive);
+        }
+        
+        // Other employees cannot see salary - return 0
+        return (emp.name, 0, emp.isActive);
     }
 
     /**
@@ -189,7 +206,33 @@ contract EmployeeRegistry is AccessControl {
     }
 
     /**
-     * @dev Get active employees for a specific employer
+     * @dev Check if caller can see an employee's salary
+     * @param _employee Employee address
+     * @return True if caller can see the salary
+     */
+    function canViewSalary(address _employee) external view returns (bool) {
+        Employee memory emp = employees[_employee];
+        
+        // Caller is the employee
+        if (msg.sender == _employee) {
+            return true;
+        }
+        
+        // Caller is the employer
+        if (msg.sender == emp.employer) {
+            return true;
+        }
+        
+        // Caller is admin
+        if (hasRole(ADMIN_ROLE, msg.sender)) {
+            return true;
+        }
+        
+        return false;
+    }
+
+    /**
+     * @dev Get all active employees for a specific employer
      * @param _employer Employer address
      * @return Array of active employee addresses for the employer
      */

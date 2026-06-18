@@ -1,18 +1,17 @@
-# Payyr - USDC Automated Payroll System on Arc Network
+# Payyr Private: Confidential Stablecoin Payroll for Global Teams
 
-A modern, **multi-tenant** automated payroll system built on Arc Network, enabling seamless USDC payments to employees with a beautiful fintech-style interface. Self-service employer registration allows unlimited companies to share the same smart contracts.
+Privacy-preserving stablecoin payroll system on Canton for companies, contractors, and auditors. **Employers can run payroll, employees can privately view their own payments, and auditors can verify payroll records — without exposing salaries, wallet addresses, or payroll batches to the public.**
 
-## 🌟 Features
+## 🔐 Privacy-First Features
 
-- **Multi-Tenant Architecture**: Unlimited companies share the same smart contracts with isolated operations
-- **Self-Service Registration**: Any wallet can register as an employer - no admin needed
-- **Modern UI**: Clean, fintech-inspired interface built with Next.js 14 and TailwindCSS
-- **Employee Management**: Add, edit, and manage employee profiles with wallet addresses
-- **Automated Payroll**: Schedule and execute automated USDC payments
-- **Dashboard Analytics**: Real-time overview of payroll metrics and balances
-- **Smart Contracts**: Solidity contracts built with Foundry for secure payments
-- **Arc Network Integration**: Leveraging Arc Network for fast, low-cost transactions
-- **Role-Based Access Control**: HR_ROLE for employers, ADMIN_ROLE for platform owner
+- **Confidential Salary Records**: Only employers and employees can see salary information
+- **Private Payroll Batches**: Payroll executions are selectively visible based on roles
+- **Employee-Only Payment Portal**: Employees see only their own payment information
+- **Auditor Access Control**: Employers can grant auditors access to verify payroll without public exposure
+- **Role-Based Visibility**: EMPLOYER, EMPLOYEE, AUDITOR, and ADMIN roles with strict permission boundaries
+- **Multi-Tenant Architecture**: Unlimited companies share the same smart contracts with isolated, private operations
+- **Stablecoin Integration**: USDC payments on Arc Network with confidential transaction semantics
+- **Institutional Compliance**: Prove payroll execution to auditors without exposing sensitive employee data
 
 ## 🔄 How It Works
 

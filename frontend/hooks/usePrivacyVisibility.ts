@@ -1,5 +1,5 @@
-import { useAccount, useContractRead } from "wagmi";
 import { useEffect, useState } from "react";
+import { usePrivy } from "@privy-io/react-auth";
 
 export interface VisibilityPermissions {
   canViewSalary: boolean;
@@ -12,7 +12,8 @@ export function usePrivacyVisibility(
   employeeAddress?: string,
   payrollId?: number,
 ) {
-  const { address: currentUser } = useAccount();
+  const { user } = usePrivy();
+  const currentUser = user?.wallet?.address;
   const [permissions, setPermissions] = useState<VisibilityPermissions>({
     canViewSalary: false,
     canViewPayroll: false,

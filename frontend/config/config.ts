@@ -2,13 +2,14 @@
 export const damlConfig = {
   // For local Daml Sandbox (default)
   sandbox: {
-    ledgerId: "payyr-private",
-    apiUrl: "http://localhost:7575",
+    ledgerId: process.env.NEXT_PUBLIC_DAML_LEDGER_ID || "sandbox",
+    apiUrl: process.env.NEXT_PUBLIC_DAML_API_URL || "http://127.0.0.1:7575",
   },
   // For Canton DevNet (future use)
   cantonDevNet: {
     ledgerId: "canton",
-    apiUrl: "https://sandbox.daml.com",
+    apiUrl:
+      process.env.NEXT_PUBLIC_DAML_API_URL || "https://sandbox.daml.com",
   },
 };
 

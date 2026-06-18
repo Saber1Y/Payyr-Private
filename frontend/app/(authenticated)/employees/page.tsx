@@ -299,7 +299,7 @@ export default function EmployeesPage() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="salary">Monthly Salary (USDC)</Label>
+                <Label htmlFor="salary">Monthly Salary</Label>
                 <Input
                   id="salary"
                   type="number"

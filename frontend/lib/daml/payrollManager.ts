@@ -1,12 +1,13 @@
 // Daml PayrollManager contract interactions
 import { ContractRecord, damlClient } from "./client";
+import { getTemplateId } from "./templateIds";
 
 export const PAYROLL_RUN_TEMPLATE =
-  "#payyr-private:Payyr.Private.PayrollManager:PayrollRun";
+  getTemplateId("Payyr.Private.PayrollManager", "PayrollRun");
 export const EMPLOYEE_PAYMENT_TEMPLATE =
-  "#payyr-private:Payyr.Private.PayrollManager:EmployeePayment";
+  getTemplateId("Payyr.Private.PayrollManager", "EmployeePayment");
 export const PAYROLL_MANAGER_TEMPLATE =
-  "#payyr-private:Payyr.Private.PayrollManager:PayrollManager";
+  getTemplateId("Payyr.Private.PayrollManager", "PayrollManager");
 
 export interface PayrollRun {
   employer: string;

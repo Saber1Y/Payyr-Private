@@ -10,6 +10,9 @@ import {
   Settings,
   DollarSign,
   PanelRight,
+  Lock,
+  Eye,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePrivy } from "@privy-io/react-auth";
@@ -29,6 +32,21 @@ const navigation = [
     name: "Payroll",
     href: "/payroll",
     icon: Wallet,
+  },
+  {
+    name: "Auditors",
+    href: "/auditors",
+    icon: ShieldCheck,
+  },
+  {
+    name: "My Payments",
+    href: "/employee-portal",
+    icon: Eye,
+  },
+  {
+    name: "Privacy Demo",
+    href: "/privacy-demo",
+    icon: Lock,
   },
   {
     name: "Settings",

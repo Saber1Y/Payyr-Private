@@ -11,11 +11,11 @@ import { Settings as SettingsIcon, Save } from "lucide-react";
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState({
-    companyName: "Arc Network Inc.",
+    companyName: "Payyr Private Demo Co.",
     timezone: "America/New_York",
     autopay: true,
-    notificationEmail: "admin@arcnetwork.com",
-    contractAddress: "0x1234...5678",
+    notificationEmail: "admin@payyrprivate.com",
+    ledgerEndpoint: "http://localhost:7575",
   });
 
   const handleSave = () => {
@@ -39,7 +39,7 @@ export default function SettingsPage() {
       <div className="mb-6 md:mb-8">
         <h1 className="text-2xl md:text-3xl font-bold text-white">Settings</h1>
         <p className="text-white mt-2 text-sm md:text-base">
-          Configure your payroll system preferences
+          Configure your payroll workspace preferences
         </p>
       </div>
 
@@ -104,14 +104,14 @@ export default function SettingsPage() {
         {/* Payroll Settings */}
         <Card>
           <CardHeader>
-            <CardTitle>Payroll Settings</CardTitle>
+            <CardTitle>Workspace Settings</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label>Automatic Payroll</Label>
                 <p className="text-sm text-gray-500">
-                  Automatically process payroll on scheduled dates
+                  Automatically prepare payroll runs on scheduled dates
                 </p>
               </div>
               <button
@@ -131,59 +131,59 @@ export default function SettingsPage() {
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="contract-address">Contract Address</Label>
+              <Label htmlFor="ledger-endpoint">Ledger API Endpoint</Label>
               <Input
-                id="contract-address"
-                value={settings.contractAddress}
+                id="ledger-endpoint"
+                value={settings.ledgerEndpoint}
                 onChange={(e) =>
-                  setSettings({ ...settings, contractAddress: e.target.value })
+                  setSettings({ ...settings, ledgerEndpoint: e.target.value })
                 }
-                placeholder="0x..."
-                className="font-mono"
+                placeholder="http://localhost:7575"
+                className="font-mono text-sm"
               />
               <p className="text-xs text-gray-500">
-                The smart contract address for your payroll system
+                The Daml JSON API endpoint used by this payroll workspace
               </p>
             </div>
           </CardContent>
         </Card>
 
-        {/* Network Information */}
+        {/* Ledger Information */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Network Information</CardTitle>
+            <CardTitle>Ledger Information</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Network</Label>
+                <Label>Runtime</Label>
                 <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <span className="font-medium">Arc Network</span>
+                  <span className="font-medium">Daml Sandbox / Canton</span>
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                     Connected
                   </span>
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Block Explorer</Label>
+                <Label>JSON API</Label>
                 <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <span className="text-sm text-gray-600">arcscan.io</span>
+                  <span className="text-sm text-gray-600">localhost:7575</span>
                   <Button variant="ghost" size="sm">
                     View
                   </Button>
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>USDC Token</Label>
+                <Label>Privacy Model</Label>
                 <div className="p-3 bg-gray-50 rounded-lg">
-                  <span className="text-sm font-mono">0xA0b8...c3D4</span>
+                  <span className="text-sm">Party-scoped contract visibility</span>
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Gas Price</Label>
+                <Label>Payroll Execution</Label>
                 <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <span className="text-sm">0.1 ARC</span>
-                  <span className="text-xs text-gray-500">Standard</span>
+                  <span className="text-sm">Ledger workflow</span>
+                  <span className="text-xs text-gray-500">Single run</span>
                 </div>
               </div>
             </div>

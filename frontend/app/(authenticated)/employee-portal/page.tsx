@@ -62,7 +62,7 @@ export default function EmployeePortalPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6">
-          <Card>
+          <Card className="text-black">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-600">
                 Total Payments
@@ -79,7 +79,7 @@ export default function EmployeePortalPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="text-black">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-600">
                 Claimed
@@ -96,7 +96,7 @@ export default function EmployeePortalPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="text-black">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-600">
                 Awaiting Claim
@@ -114,7 +114,7 @@ export default function EmployeePortalPage() {
           </Card>
         </div>
 
-        <Card>
+        <Card className="text-black">
           <CardHeader>
             <CardTitle className="text-lg font-semibold text-black">
               Payment History
@@ -204,7 +204,7 @@ export default function EmployeePortalPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-green-200 bg-green-50">
+        <Card className="border-green-200 bg-green-50 text-black">
           <CardHeader>
             <CardTitle className="text-lg font-semibold text-green-900">
               Privacy

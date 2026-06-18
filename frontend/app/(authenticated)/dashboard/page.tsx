@@ -366,14 +366,7 @@ export default function DashboardPage() {
                       Authorize auditors on a payroll-run basis without opening
                       data publicly.
                     </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full text-green-600 border-green-200"
-                      onClick={() => router.push("/privacy-demo")}
-                    >
-                      See Demo
-                    </Button>
+                   
                   </div>
                 </div>
 

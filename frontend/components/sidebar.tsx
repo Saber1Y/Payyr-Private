@@ -43,11 +43,7 @@ const navigation = [
     href: "/employee-portal",
     icon: Eye,
   },
-  {
-    name: "Privacy Demo",
-    href: "/privacy-demo",
-    icon: Lock,
-  },
+
   {
     name: "Settings",
     href: "/settings",

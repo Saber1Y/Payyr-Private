@@ -230,7 +230,7 @@ export default function EmployeesPage() {
   if (!ready || !authenticated) {
     return (
       <div className="p-8 bg-[#114277] min-h-screen">
-        <Card className="mt-8">
+        <Card className="mt-8 text-black">
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 text-yellow-600">
               <AlertCircle className="h-5 w-5" />
@@ -357,7 +357,7 @@ export default function EmployeesPage() {
         </Dialog>
       </div>
 
-      <Card>
+      <Card className="text-black">
         <CardHeader>
           <CardTitle>Employee List</CardTitle>
         </CardHeader>
@@ -382,17 +382,17 @@ export default function EmployeesPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="text-black">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="min-w-[120px]">Name</TableHead>
-                    <TableHead className="min-w-[120px]">Employee ID</TableHead>
-                    <TableHead className="hidden md:table-cell min-w-[120px]">
+                    <TableHead className="min-w-[120px] text-black">Name</TableHead>
+                    <TableHead className="min-w-[120px] text-black">Employee ID</TableHead>
+                    <TableHead className="hidden md:table-cell min-w-[120px] text-black">
                       Role
                     </TableHead>
-                    <TableHead className="min-w-[100px]">Salary</TableHead>
-                    <TableHead className="min-w-[80px]">Status</TableHead>
-                    <TableHead className="text-right min-w-[120px]">
+                    <TableHead className="min-w-[100px] text-black">Salary</TableHead>
+                    <TableHead className="min-w-[80px] text-black">Status</TableHead>
+                    <TableHead className="text-right min-w-[120px] text-black">
                       Actions
                     </TableHead>
                   </TableRow>
@@ -402,7 +402,7 @@ export default function EmployeesPage() {
                     const record = emp.payload;
                     const contractId = emp.contractId;
                     return (
-                      <TableRow key={contractId}>
+                      <TableRow key={contractId} className="text-black">
                         <TableCell className="font-medium">
                           <div className="flex flex-col">
                             <span>{record.name}</span>

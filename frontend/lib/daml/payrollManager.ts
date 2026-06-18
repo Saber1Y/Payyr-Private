@@ -2,8 +2,10 @@
 import { damlClient } from "./client";
 
 export const PAYROLL_RUN_TEMPLATE = "Payyr.Private.PayrollManager:PayrollRun";
-export const EMPLOYEE_PAYMENT_TEMPLATE = "Payyr.Private.PayrollManager:EmployeePayment";
-export const PAYROLL_MANAGER_TEMPLATE = "Payyr.Private.PayrollManager:PayrollManager";
+export const EMPLOYEE_PAYMENT_TEMPLATE =
+  "Payyr.Private.PayrollManager:EmployeePayment";
+export const PAYROLL_MANAGER_TEMPLATE =
+  "Payyr.Private.PayrollManager:PayrollManager";
 
 export interface PayrollRun {
   employer: string;
@@ -34,7 +36,7 @@ export async function createPayrollRun(
   contractId: string,
   employer: string,
   employeeProfiles: unknown[],
-  timestamp: string
+  timestamp: string,
 ): Promise<{ contractId: string; payload: PayrollRun }> {
   return damlClient.exerciseChoice(contractId, "CreatePayrollRun", {
     employer,
@@ -46,7 +48,7 @@ export async function createPayrollRun(
 // Grant auditor access to payroll
 export async function grantAuditorAccessPayroll(
   contractId: string,
-  auditor: string
+  auditor: string,
 ): Promise<{ contractId: string; payload: PayrollRun }> {
   return damlClient.exerciseChoice(contractId, "GrantAuditorAccess", {
     auditor,
@@ -56,7 +58,7 @@ export async function grantAuditorAccessPayroll(
 // Revoke auditor access to payroll
 export async function revokeAuditorAccessPayroll(
   contractId: string,
-  auditor: string
+  auditor: string,
 ): Promise<{ contractId: string; payload: PayrollRun }> {
   return damlClient.exerciseChoice(contractId, "RevokeAuditorAccess", {
     auditor,
@@ -65,7 +67,7 @@ export async function revokeAuditorAccessPayroll(
 
 // Make payroll public
 export async function makePayrollPublic(
-  contractId: string
+  contractId: string,
 ): Promise<{ contractId: string; payload: PayrollRun }> {
   return damlClient.exerciseChoice(contractId, "MakePayrollPublic", {});
 }
@@ -74,7 +76,7 @@ export async function makePayrollPublic(
 export async function issueEmployeePayment(
   contractId: string,
   employee: string,
-  amount: number
+  amount: number,
 ): Promise<{ contractId: string; payload: EmployeePayment }> {
   return damlClient.exerciseChoice(contractId, "IssueEmployeePayment", {
     employee,
@@ -84,7 +86,7 @@ export async function issueEmployeePayment(
 
 // Claim payment
 export async function claimPayment(
-  contractId: string
+  contractId: string,
 ): Promise<{ contractId: string; payload: EmployeePayment }> {
   return damlClient.exerciseChoice(contractId, "Claim", {});
 }
@@ -93,7 +95,7 @@ export async function claimPayment(
 export async function withdrawPayroll(
   contractId: string,
   employer: string,
-  amount: number
+  amount: number,
 ): Promise<{ contractId: string; payload: unknown }> {
   return damlClient.exerciseChoice(contractId, "WithdrawPayroll", {
     employer,
@@ -103,7 +105,7 @@ export async function withdrawPayroll(
 
 // Query payroll runs for an employer
 export async function getPayrollsByEmployer(
-  employer: string
+  employer: string,
 ): Promise<Array<{ contractId: string; payload: PayrollRun }>> {
   return damlClient.queryContracts<PayrollRun>(PAYROLL_RUN_TEMPLATE, {
     employer,
@@ -112,17 +114,16 @@ export async function getPayrollsByEmployer(
 
 // Query employee payments
 export async function getEmployeePayments(
-  employee: string
+  employee: string,
 ): Promise<Array<{ contractId: string; payload: EmployeePayment }>> {
-  return damlClient.queryContracts<EmployeePayment>(
-    EMPLOYEE_PAYMENT_TEMPLATE,
-    { employee }
-  );
+  return damlClient.queryContracts<EmployeePayment>(EMPLOYEE_PAYMENT_TEMPLATE, {
+    employee,
+  });
 }
 
 // Query unclaimed payments
 export async function getUnclaimedPayments(
-  employee: string
+  employee: string,
 ): Promise<Array<{ contractId: string; payload: EmployeePayment }>> {
   const payments = await getEmployeePayments(employee);
   return payments.filter((payment) => !payment.payload.claimed);

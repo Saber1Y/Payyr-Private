@@ -14,5 +14,3 @@ export const damlConfig = {
 
 // Use Daml Sandbox by default for local development
 export const activeConfig = damlConfig.sandbox;
-
-

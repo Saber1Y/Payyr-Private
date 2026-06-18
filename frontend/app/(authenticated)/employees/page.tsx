@@ -22,7 +22,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Edit, UserX, UserCheck, Loader2, AlertCircle } from "lucide-react";
+import {
+  Plus,
+  Edit,
+  UserX,
+  UserCheck,
+  Loader2,
+  AlertCircle,
+} from "lucide-react";
 import { usePrivy } from "@privy-io/react-auth";
 import {
   useEmployeesByEmployer,
@@ -47,7 +54,9 @@ export default function EmployeesPage() {
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editingContractId, setEditingContractId] = useState<string | null>(null);
+  const [editingContractId, setEditingContractId] = useState<string | null>(
+    null,
+  );
   const [formData, setFormData] = useState<FormData>({
     name: "",
     employee: "",
@@ -57,9 +66,11 @@ export default function EmployeesPage() {
   });
 
   // Fetch employees for this employer
-  const { data: employees, isLoading, error } = useEmployeesByEmployer(
-    employerParty
-  );
+  const {
+    data: employees,
+    isLoading,
+    error,
+  } = useEmployeesByEmployer(employerParty);
 
   // Mutations
   const { mutate: registerEmployee, isPending: isRegisterPending } =
@@ -83,7 +94,12 @@ export default function EmployeesPage() {
   };
 
   const handleAddEmployee = () => {
-    if (!formData.name || !formData.employee || !formData.salary || !formData.role) {
+    if (
+      !formData.name ||
+      !formData.employee ||
+      !formData.salary ||
+      !formData.role
+    ) {
       alert("Please fill in all fields");
       return;
     }
@@ -110,7 +126,7 @@ export default function EmployeesPage() {
         onError: (err) => {
           alert(`Error: ${err.message}`);
         },
-      }
+      },
     );
   };
 
@@ -131,7 +147,12 @@ export default function EmployeesPage() {
   };
 
   const handleUpdateEmployee = () => {
-    if (!formData.name || !formData.salary || !formData.role || !editingContractId) {
+    if (
+      !formData.name ||
+      !formData.salary ||
+      !formData.role ||
+      !editingContractId
+    ) {
       alert("Please fill in all fields");
       return;
     }
@@ -151,7 +172,7 @@ export default function EmployeesPage() {
         onError: (err) => {
           alert(`Error: ${err.message}`);
         },
-      }
+      },
     );
   };
 
@@ -163,7 +184,7 @@ export default function EmployeesPage() {
           onError: (err) => {
             alert(`Error: ${err.message}`);
           },
-        }
+        },
       );
     }
   };
@@ -175,7 +196,7 @@ export default function EmployeesPage() {
         onError: (err) => {
           alert(`Error: ${err.message}`);
         },
-      }
+      },
     );
   };
 
@@ -194,8 +215,7 @@ export default function EmployeesPage() {
     );
   }
 
-  const activeCount =
-    employees?.filter((e) => e.value.isActive).length || 0;
+  const activeCount = employees?.filter((e) => e.value.isActive).length || 0;
 
   return (
     <div className="p-4 md:p-8 bg-[#114277] min-h-screen">
@@ -398,7 +418,9 @@ export default function EmployeesPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleActivateEmployee(contractId)}
+                                onClick={() =>
+                                  handleActivateEmployee(contractId)
+                                }
                                 disabled={isActivatePending}
                                 className="h-8 w-8 md:h-8 md:w-auto md:px-2"
                               >

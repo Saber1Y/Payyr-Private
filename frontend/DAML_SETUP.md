@@ -36,6 +36,7 @@ npm run dev
 ## Daml API Integration
 
 The frontend uses the **Daml JSON API** to interact with contracts. See:
+
 - [frontend/lib/daml/client.ts](../frontend/lib/daml/client.ts) - Daml client setup
 - [frontend/lib/daml/employeeRegistry.ts](../frontend/lib/daml/employeeRegistry.ts) - Employee contract functions
 - [frontend/lib/daml/payrollManager.ts](../frontend/lib/daml/payrollManager.ts) - Payroll contract functions
@@ -56,7 +57,7 @@ const result = await registerEmployee(
   "Alice Smith",
   5000,
   "Engineer",
-  new Date().toISOString()
+  new Date().toISOString(),
 );
 ```
 

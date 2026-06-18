@@ -35,7 +35,7 @@ export class DamlClient {
   private async request<T>(
     endpoint: string,
     method: "GET" | "POST" | "PUT" | "DELETE" = "GET",
-    body?: unknown
+    body?: unknown,
   ): Promise<T> {
     const url = `${this.config.apiUrl}${endpoint}`;
     const headers: Record<string, string> = {
@@ -62,46 +62,34 @@ export class DamlClient {
   // Query contracts
   async queryContracts<T>(
     templateId: string,
-    predicate?: Record<string, unknown>
+    predicate?: Record<string, unknown>,
   ): Promise<Array<{ contractId: string; payload: T }>> {
     const query = { templateId, ...predicate };
-    return this.request(
-      `/contract/search`,
-      "POST",
-      query
-    );
+    return this.request(`/contract/search`, "POST", query);
   }
 
   // Exercise choice
   async exerciseChoice<T>(
     contractId: string,
     choice: string,
-    argument: unknown
+    argument: unknown,
   ): Promise<T> {
-    return this.request(
-      `/command/exercise`,
-      "POST",
-      {
-        contractId,
-        choice,
-        argument,
-      }
-    );
+    return this.request(`/command/exercise`, "POST", {
+      contractId,
+      choice,
+      argument,
+    });
   }
 
   // Create contract
   async createContract<T>(
     templateId: string,
-    payload: T
+    payload: T,
   ): Promise<{ contractId: string; payload: T }> {
-    return this.request(
-      `/command/create`,
-      "POST",
-      {
-        templateId,
-        payload,
-      }
-    );
+    return this.request(`/command/create`, "POST", {
+      templateId,
+      payload,
+    });
   }
 }
 

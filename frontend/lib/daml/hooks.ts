@@ -43,7 +43,7 @@ export function useRegisterEmployee() {
         data.name,
         data.salary,
         data.role,
-        data.startDate
+        data.startDate,
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["employees"] });
@@ -67,7 +67,7 @@ export function useUpdateEmployee() {
         data.contractId,
         data.newName,
         data.newSalary,
-        data.newRole
+        data.newRole,
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["employees"] });
@@ -127,7 +127,7 @@ export function useCreatePayrollRun() {
         data.contractId,
         data.employer,
         data.employeeProfiles,
-        data.timestamp
+        data.timestamp,
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payrolis"] });

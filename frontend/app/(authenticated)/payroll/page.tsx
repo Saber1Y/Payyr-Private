@@ -134,7 +134,7 @@ export default function PayrollPage() {
   if (isEmployerLoading) {
     return (
       <div className="min-h-screen bg-[#114277] p-4 md:p-8">
-        <Card>
+        <Card className="text-black">
           <CardContent className="pt-6 text-gray-600">
             Loading payroll workspace...
           </CardContent>
@@ -147,7 +147,7 @@ export default function PayrollPage() {
     return (
       <div className="min-h-screen bg-[#114277] p-4 md:p-8">
         <div className="mx-auto mt-8 max-w-md">
-          <Card>
+          <Card className="text-black">
             <CardHeader>
               <CardTitle className="text-black">Register as Employer</CardTitle>
             </CardHeader>
@@ -179,7 +179,7 @@ export default function PayrollPage() {
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-4 md:mb-8 md:grid-cols-4 md:gap-6">
-        <Card>
+        <Card className="text-black">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">
               Active Employees
@@ -194,7 +194,7 @@ export default function PayrollPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="text-black">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">
               Monthly Total
@@ -211,7 +211,7 @@ export default function PayrollPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="text-black">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">
               Payroll Runs
@@ -226,7 +226,7 @@ export default function PayrollPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="text-black">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">
               Status
@@ -322,7 +322,7 @@ export default function PayrollPage() {
         </Button>
       </div>
 
-      <Card>
+      <Card className="text-black">
         <CardHeader>
           <CardTitle className="text-black">Payroll History</CardTitle>
         </CardHeader>
@@ -342,15 +342,15 @@ export default function PayrollPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="text-black">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="min-w-[60px]">Run #</TableHead>
-                    <TableHead className="min-w-[110px]">Date</TableHead>
-                    <TableHead className="min-w-[80px]">Employees</TableHead>
-                    <TableHead className="min-w-[120px]">Total Amount</TableHead>
-                    <TableHead className="min-w-[80px]">Privacy</TableHead>
-                    <TableHead className="min-w-[80px]">Status</TableHead>
+                    <TableHead className="min-w-[60px] text-black">Run #</TableHead>
+                    <TableHead className="min-w-[110px] text-black">Date</TableHead>
+                    <TableHead className="min-w-[80px] text-black">Employees</TableHead>
+                    <TableHead className="min-w-[120px] text-black">Total Amount</TableHead>
+                    <TableHead className="min-w-[80px] text-black">Privacy</TableHead>
+                    <TableHead className="min-w-[80px] text-black">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -392,7 +392,7 @@ export default function PayrollPage() {
         </CardContent>
       </Card>
 
-      <Card className="mt-6 border-purple-200 bg-gradient-to-br from-purple-50 to-blue-50">
+      <Card className="mt-6 border-purple-200 bg-gradient-to-br from-purple-50 to-blue-50 text-black">
         <CardHeader>
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-purple-600" />

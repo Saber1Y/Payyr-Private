@@ -73,12 +73,14 @@ companyB.executePayroll() → pays emp4, emp5
 ### Smart Contracts
 
 **EmployeeRegistry** (`0x20B3dB45a351E92673112064A3F01951115eD6B7`)
+
 - Manages employee records
 - Links employees to employers
 - Handles employer registration
 - Tracks employer-employee relationships
 
 **PayrollManager** (`0x1739715A3452BF1e336305cf8f9542d177cEa03A`)
+
 - Manages USDC deposits
 - Executes payroll per employer
 - Tracks employer balances
@@ -104,25 +106,25 @@ frontend/
 
 ### Deployment (Platform Owner - One-Time)
 
-| Contract | Est. Gas | Cost (USDC) |
-|----------|----------|-------------|
-| EmployeeRegistry | ~1.5M | **$2.40** |
-| PayrollManager | ~2.6M | **$4.16** |
-| **Total Deployment** | **~4.1M** | **$6.56** |
+| Contract             | Est. Gas  | Cost (USDC) |
+| -------------------- | --------- | ----------- |
+| EmployeeRegistry     | ~1.5M     | **$2.40**   |
+| PayrollManager       | ~2.6M     | **$4.16**   |
+| **Total Deployment** | **~4.1M** | **$6.56**   |
 
 ### User Operations
 
-| Operation | Est. Gas | Cost (USDC) |
-|-----------|----------|-------------|
-| Register as Employer | 50,000 | **$0.08** |
-| Add Employee | 120,000 | **$0.19** |
-| Update Employee | 90,000 | **$0.14** |
-| Deactivate Employee | 80,000 | **$0.13** |
-| Approve USDC (once) | 40,000 | **$0.06** |
-| Deposit Payroll | 70,000 | **$0.11** |
-| Execute Payroll (per employee) | 150,000 | **$0.24** |
+| Operation                      | Est. Gas | Cost (USDC) |
+| ------------------------------ | -------- | ----------- |
+| Register as Employer           | 50,000   | **$0.08**   |
+| Add Employee                   | 120,000  | **$0.19**   |
+| Update Employee                | 90,000   | **$0.14**   |
+| Deactivate Employee            | 80,000   | **$0.13**   |
+| Approve USDC (once)            | 40,000   | **$0.06**   |
+| Deposit Payroll                | 70,000   | **$0.11**   |
+| Execute Payroll (per employee) | 150,000  | **$0.24**   |
 
-*Assumptions: 160 gwei gas price, $0.0016 per gas unit on Arc Network*
+_Assumptions: 160 gwei gas price, $0.0016 per gas unit on Arc Network_
 
 ### Cost Example: Company with 5 Employees
 
@@ -174,6 +176,7 @@ Open [http://localhost:3000](http://localhost:3000) to view the application.
 ## 🛠️ Tech Stack
 
 ### Frontend
+
 - **Next.js 14** - React framework with app router
 - **TypeScript** - Type-safe development
 - **TailwindCSS** - Utility-first styling
@@ -183,6 +186,7 @@ Open [http://localhost:3000](http://localhost:3000) to view the application.
 - **Lucide React** - Beautiful icons
 
 ### Backend
+
 - **Foundry** - Smart contract development framework
 - **Solidity** - Smart contract programming language
 - **OpenZeppelin** - Security libraries (AccessControl, ReentrancyGuard, Pausable)
@@ -191,11 +195,13 @@ Open [http://localhost:3000](http://localhost:3000) to view the application.
 ## 📊 Pages & Features
 
 ### Dashboard
+
 - Platform-wide statistics
 - Recent payroll runs
 - Total contract balance (admin view)
 
 ### Employees
+
 - **Employer Registration** - Self-service onboarding
 - **Employee List** - View your team members
 - **Add Employee** - Add new team members
@@ -203,12 +209,14 @@ Open [http://localhost:3000](http://localhost:3000) to view the application.
 - **Activate/Deactivate** - Manage employee status
 
 ### Payroll
+
 - **Deposit USDC** - Fund your payroll account
 - **View Balance** - Check your available funds
 - **Execute Payroll** - Pay all active employees
 - **Payroll History** - View past runs
 
 ### Settings
+
 - Company information
 - Payment preferences
 - Wallet management

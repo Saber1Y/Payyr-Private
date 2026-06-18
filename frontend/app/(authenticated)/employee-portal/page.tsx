@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Card } from '@/components/ui/card';
-import { useAccount } from 'wagmi';
+import { useState, useEffect } from "react";
+import { Card } from "@/components/ui/card";
+import { useAccount } from "wagmi";
 
 interface EmployeePayment {
   payrollId: number;
   amount: number;
   date: Date;
-  status: 'pending' | 'completed' | 'failed';
+  status: "pending" | "completed" | "failed";
   employerName: string;
 }
 
@@ -28,7 +28,7 @@ export default function EmployeePortalPage() {
         setPayments(mockPayments);
         setTotalEarned(0);
       } catch (error) {
-        console.error('Error loading payments:', error);
+        console.error("Error loading payments:", error);
       } finally {
         setLoading(false);
       }
@@ -44,18 +44,23 @@ export default function EmployeePortalPage() {
       <div>
         <h1 className="text-3xl font-bold">My Payment Portal</h1>
         <p className="text-gray-600 mt-2">
-          View your confidential payment records. Only you can see this information.
+          View your confidential payment records. Only you can see this
+          information.
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="p-6">
           <h3 className="text-sm font-medium text-gray-600">Total Received</h3>
-          <p className="text-3xl font-bold mt-2">${totalEarned.toLocaleString()}</p>
+          <p className="text-3xl font-bold mt-2">
+            ${totalEarned.toLocaleString()}
+          </p>
         </Card>
 
         <Card className="p-6">
-          <h3 className="text-sm font-medium text-gray-600">Payments Received</h3>
+          <h3 className="text-sm font-medium text-gray-600">
+            Payments Received
+          </h3>
           <p className="text-3xl font-bold mt-2">{payments.length}</p>
         </Card>
 
@@ -86,25 +91,34 @@ export default function EmployeePortalPage() {
               <thead>
                 <tr className="border-b">
                   <th className="text-left py-2 px-4 font-semibold">Date</th>
-                  <th className="text-left py-2 px-4 font-semibold">Employer</th>
+                  <th className="text-left py-2 px-4 font-semibold">
+                    Employer
+                  </th>
                   <th className="text-left py-2 px-4 font-semibold">Amount</th>
                   <th className="text-left py-2 px-4 font-semibold">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {payments.map((payment) => (
-                  <tr key={payment.payrollId} className="border-b hover:bg-gray-50">
-                    <td className="py-3 px-4">{payment.date.toLocaleDateString()}</td>
+                  <tr
+                    key={payment.payrollId}
+                    className="border-b hover:bg-gray-50"
+                  >
+                    <td className="py-3 px-4">
+                      {payment.date.toLocaleDateString()}
+                    </td>
                     <td className="py-3 px-4">{payment.employerName}</td>
-                    <td className="py-3 px-4 font-semibold">${payment.amount.toLocaleString()}</td>
+                    <td className="py-3 px-4 font-semibold">
+                      ${payment.amount.toLocaleString()}
+                    </td>
                     <td className="py-3 px-4">
                       <span
                         className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
-                          payment.status === 'completed'
-                            ? 'bg-green-100 text-green-800'
-                            : payment.status === 'pending'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-red-100 text-red-800'
+                          payment.status === "completed"
+                            ? "bg-green-100 text-green-800"
+                            : payment.status === "pending"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-red-100 text-red-800"
                         }`}
                       >
                         {payment.status}
@@ -121,10 +135,16 @@ export default function EmployeePortalPage() {
       <Card className="p-6 bg-green-50 border-green-200">
         <h3 className="font-semibold text-green-900 mb-2">🔐 Your Privacy</h3>
         <ul className="text-sm text-green-800 space-y-1">
-          <li>✓ Your salary is private - only you and your employer can see it</li>
+          <li>
+            ✓ Your salary is private - only you and your employer can see it
+          </li>
           <li>✓ Other employees cannot see your payment information</li>
-          <li>✓ Only auditors approved by your employer can access payroll data</li>
-          <li>✓ Your wallet address is not publicly visible on the blockchain</li>
+          <li>
+            ✓ Only auditors approved by your employer can access payroll data
+          </li>
+          <li>
+            ✓ Your wallet address is not publicly visible on the blockchain
+          </li>
         </ul>
       </Card>
     </div>

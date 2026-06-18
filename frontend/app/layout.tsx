@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Sora } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
-import { WagmiProviders } from "@/config/WagmiProviders";
+import { QueryProviders } from "@/config/WagmiProviders";
 
 const sora = Sora({
   variable: "--font-sora",
@@ -22,11 +22,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${sora.variable} antialiased bg-gray-50`}>
-        <WagmiProviders>
+        <QueryProviders>
           <Providers>
             {children}
           </Providers>
-        </WagmiProviders>
+        </QueryProviders>
       </body>
     </html>
   );

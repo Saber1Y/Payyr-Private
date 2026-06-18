@@ -21,6 +21,7 @@ import {
 } from "@/lib/daml/hooks";
 import { damlClient } from "@/lib/daml/client";
 import { resolveDamlParty } from "@/lib/daml/partyMapper";
+import { useDamlParty } from "@/hooks/useDamlParty";
 
 interface AuditorAccessRecord {
   contractId: string;
@@ -30,8 +31,8 @@ interface AuditorAccessRecord {
 }
 
 export default function AuditorsPage() {
-  const { user, authenticated } = usePrivy();
-  const employerParty = resolveDamlParty(user?.wallet?.address);
+  const { authenticated } = usePrivy();
+  const { damlParty: employerParty } = useDamlParty();
 
   const [newAuditorParty, setNewAuditorParty] = useState("");
   const [selectedPayrollId, setSelectedPayrollId] = useState("");

@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   UserPlus,
   Wallet,
+  Lock,
 } from "lucide-react";
 import { useReadContract, useAccount } from "wagmi";
 import formatBalance, { formatPayroll } from "@/utils/utils";
@@ -498,6 +499,90 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Privacy Features Section */}
+      {isEmployer === true && (
+        <div className="mt-6 md:mt-8">
+          <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-blue-50">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Lock className="h-5 w-5 text-purple-600" />
+                <CardTitle className="text-black">Privacy & Compliance</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-4 bg-white rounded-lg border border-purple-200">
+                  <h3 className="font-semibold text-black mb-2">🔐 Private Salary Records</h3>
+                  <p className="text-sm text-gray-700 mb-3">
+                    Employee salaries are encrypted and only visible to authorized parties.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full text-purple-600 border-purple-200"
+                    onClick={() => router.push("/auditors")}
+                  >
+                    Manage Access
+                  </Button>
+                </div>
+
+                <div className="p-4 bg-white rounded-lg border border-blue-200">
+                  <h3 className="font-semibold text-black mb-2">👥 Employee Privacy</h3>
+                  <p className="text-sm text-gray-700 mb-3">
+                    Each employee only sees their own payments and details.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full text-blue-600 border-blue-200"
+                    onClick={() => router.push("/employee-portal")}
+                  >
+                    Employee Portal
+                  </Button>
+                </div>
+
+                <div className="p-4 bg-white rounded-lg border border-green-200">
+                  <h3 className="font-semibold text-black mb-2">✅ Auditor Compliance</h3>
+                  <p className="text-sm text-gray-700 mb-3">
+                    Grant auditors access to verify payroll execution privately.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full text-green-600 border-green-200"
+                    onClick={() => router.push("/privacy-demo")}
+                  >
+                    See Demo
+                  </Button>
+                </div>
+              </div>
+
+              <div className="p-4 bg-white rounded-lg border border-indigo-200">
+                <h3 className="font-semibold text-indigo-900 mb-2">🎯 Privacy Status</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                  <div>
+                    <p className="text-gray-600">Payroll Privacy</p>
+                    <p className="font-semibold text-green-600">✓ Enabled</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">Salary Visibility</p>
+                    <p className="font-semibold text-green-600">✓ Private</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">Auditor Access</p>
+                    <p className="font-semibold text-green-600">✓ Controlled</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">Public Exposure</p>
+                    <p className="font-semibold text-green-600">✓ None</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

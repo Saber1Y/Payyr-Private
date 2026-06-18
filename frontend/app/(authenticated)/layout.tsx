@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { Sidebar } from "@/components/sidebar";
 import { Navbar } from "@/components/navbar";
 import { usePrivy } from "@privy-io/react-auth";

@@ -18,7 +18,7 @@ export const defaultDamlConfig: DamlConfig = {
   ledgerId: process.env.NEXT_PUBLIC_DAML_LEDGER_ID || "sandbox",
   apiUrl: process.env.NEXT_PUBLIC_DAML_API_PROXY_URL || "/api/daml",
   party: "", // Set dynamically from user auth
-  accessToken: process.env.NEXT_PUBLIC_DAML_ACCESS_TOKEN || "",
+  accessToken: "",
 };
 
 // For Canton DevNet (when available)
@@ -26,7 +26,7 @@ export const cantonDevNetConfig: DamlConfig = {
   ledgerId: "canton",
   apiUrl: process.env.NEXT_PUBLIC_DAML_API_PROXY_URL || "/api/daml",
   party: "", // Set dynamically from user auth
-  accessToken: process.env.NEXT_PUBLIC_DAML_ACCESS_TOKEN || "",
+  accessToken: "",
 };
 
 export class DamlClient {

@@ -2,7 +2,9 @@
 
 export const dynamic = "force-dynamic";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { usePrivy } from "@privy-io/react-auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -14,8 +16,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -25,243 +25,140 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Wallet,
-  Send,
   AlertCircle,
   CheckCircle,
   Loader2,
+  Send,
   ShieldCheck,
+  Users,
+  Wallet,
 } from "lucide-react";
-import { useReadContract, useWriteContract } from "wagmi";
-import formatBalance from "@/utils/utils";
-import USDCABI from "../../../lib/abi/USDC.json";
-import PayrollContractABi from "../../../lib/abi/PayrollManager.json";
-import EmployeeRegistryABI from "../../../lib/abi/EmployeeRegistry.json";
-
-import { usePrivy } from "@privy-io/react-auth";
-
-const EMPLOYEE_REGISTRY_ADDRESS =
-  "0x20B3dB45a351E92673112064A3F01951115eD6B7" as const;
-const PAYROLL_REGISTRY_ADDRESS =
-  "0x1739715A3452BF1e336305cf8f9542d177cEa03A" as const;
-
-const ARC_USDC_ADDR = "0x3600000000000000000000000000000000000000" as const;
+import {
+  useActiveEmployees,
+  useCreatePayrollRun,
+  useEmployerContracts,
+  usePayrollsByEmployer,
+} from "@/lib/daml/hooks";
+import { ContractRecord, damlClient } from "@/lib/daml/client";
+import {
+  ensurePayrollManagerContract,
+  type PayrollManager,
+} from "@/lib/daml/payrollManager";
 
 export default function PayrollPage() {
-  const [depositAmount, setDepositAmount] = useState("");
-  const [step, setStep] = useState<"closed" | "approve" | "deposit">("closed");
+  const router = useRouter();
+  const { user, authenticated } = usePrivy();
+  const employerParty = user?.wallet?.address || "";
 
-  const { user, ready, authenticated } = usePrivy();
+  const [isRunDialogOpen, setIsRunDialogOpen] = useState(false);
 
-  const address = user?.wallet?.address;
+  useEffect(() => {
+    damlClient.setParty(employerParty);
+  }, [employerParty]);
 
-  /* ==================== READ CONTRACTS ==================== */
+  const { data: employerContracts, isLoading: isEmployerLoading } =
+    useEmployerContracts(employerParty);
+  const { data: activeEmployees, isLoading: isEmployeesLoading } =
+    useActiveEmployees(employerParty);
+  const {
+    data: payrolls,
+    isLoading: isPayrollsLoading,
+    error: payrollsError,
+  } = usePayrollsByEmployer(employerParty);
+  const { mutate: createPayrollRun, isPending } = useCreatePayrollRun();
 
-  // User's USDC balance
-  const { data: userBalance } = useReadContract({
-    address: ARC_USDC_ADDR,
-    abi: USDCABI,
-    functionName: "balanceOf",
-    args: [address as `0x${string}`],
-    chainId: 5042002,
-    query: { enabled: !!address },
-  });
+  const isEmployer = (employerContracts?.length ?? 0) > 0;
+  const activeEmployeeRecords = activeEmployees ?? [];
+  const sortedPayrolls = useMemo(() => {
+    return [...(payrolls ?? [])].sort(
+      (left, right) =>
+        Number(right.payload.payrollId) - Number(left.payload.payrollId),
+    );
+  }, [payrolls]);
+  const payrollHistory = sortedPayrolls.slice(0, 10);
+  const latestPayroll = payrollHistory[0]?.payload;
+  const monthlyPayrollTotal = activeEmployeeRecords.reduce(
+    (sum, employee) => sum + Number(employee.payload.salary),
+    0,
+  );
+  const totalPayrollRuns = sortedPayrolls.length;
+  const canRunPayroll = activeEmployeeRecords.length > 0 && !isPending;
 
-  // Check USDC allowance to payroll contract
-  const { data: allowance } = useReadContract({
-    address: ARC_USDC_ADDR,
-    abi: USDCABI,
-    functionName: "allowance",
-    args: [address as `0x${string}`, PAYROLL_REGISTRY_ADDRESS],
-    chainId: 5042002,
-    query: { enabled: !!address },
-  });
+  const handleRunPayroll = async () => {
+    if (!employerParty) {
+      alert("Please authenticate first.");
+      return;
+    }
 
-  // Get contract total balance (for admin/deployer)
-  const { data: totalContractBalance } = useReadContract({
-    address: PAYROLL_REGISTRY_ADDRESS,
-    abi: PayrollContractABi.abi,
-    functionName: "getTotalBalance",
-  });
+    if (activeEmployeeRecords.length === 0) {
+      alert("Add at least one active employee before running payroll.");
+      return;
+    }
 
-  // Employer's USDC balance in contract
-  const { data: employerBalance } = useReadContract({
-    address: PAYROLL_REGISTRY_ADDRESS,
-    abi: PayrollContractABi.abi,
-    functionName: "getMyBalance",
-    query: {
-      enabled:
-        !!address && address !== "0x11f7eaC93C9DD552DFD657BE52007A25E200f356",
-    },
-  });
+    let payrollManagerContract: ContractRecord<PayrollManager>;
 
-  // Display balance: employer balance for regular users, total balance for admin
-  const displayBalance: bigint = (totalContractBalance ??
-    employerBalance ??
-    0n) as bigint;
+    try {
+      payrollManagerContract = await ensurePayrollManagerContract(employerParty);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to load payroll manager contract";
+      alert(`Error: ${message}`);
+      return;
+    }
 
-  const formattedDisplayBalance = formatBalance(displayBalance);
-
-  // Current payroll ID
-  const { data: currentPayrollId } = useReadContract({
-    address: PAYROLL_REGISTRY_ADDRESS,
-    abi: PayrollContractABi.abi,
-    functionName: "currentPayrollId",
-  });
-
-  // Employer's total monthly cost
-  const { data: monthlyPayrollCost } = useReadContract({
-    address: EMPLOYEE_REGISTRY_ADDRESS,
-    abi: EmployeeRegistryABI.abi,
-    functionName: "getEmployerMonthlyCost",
-    args: [address as `0x${string}`],
-    query: {
-      enabled: !!address,
-    },
-  });
-
-  // Employer's active employees count
-  const { data: employerEmployees } = useReadContract({
-    address: EMPLOYEE_REGISTRY_ADDRESS,
-    abi: EmployeeRegistryABI.abi,
-    functionName: "getEmployerEmployees",
-    args: [address as `0x${string}`],
-    query: {
-      enabled: !!address,
-    },
-  });
-
-  // Check if user is employer
-  const { data: isEmployer } = useReadContract({
-    address: EMPLOYEE_REGISTRY_ADDRESS,
-    abi: EmployeeRegistryABI.abi,
-    functionName: "isEmployer",
-    args: [address as `0x${string}`],
-    query: {
-      enabled: !!address,
-    },
-  });
-
-  // Fetch last 3 payroll runs
-  const { data: payrollHistory1 } = useReadContract({
-    address: PAYROLL_REGISTRY_ADDRESS,
-    abi: PayrollContractABi.abi,
-    functionName: "payrollRuns",
-    args: [currentPayrollId as bigint],
-    query: {
-      enabled: !!currentPayrollId && Number(currentPayrollId) > 0,
-    },
-  });
-
-  const { data: payrollHistory2 } = useReadContract({
-    address: PAYROLL_REGISTRY_ADDRESS,
-    abi: PayrollContractABi.abi,
-    functionName: "payrollRuns",
-    args: [currentPayrollId ? (currentPayrollId as bigint) - 1n : 0n],
-    query: {
-      enabled: !!currentPayrollId && Number(currentPayrollId) > 1,
-    },
-  });
-
-  const { data: payrollHistory3 } = useReadContract({
-    address: PAYROLL_REGISTRY_ADDRESS,
-    abi: PayrollContractABi.abi,
-    functionName: "payrollRuns",
-    args: [currentPayrollId ? (currentPayrollId as bigint) - 2n : 0n],
-    query: {
-      enabled: !!currentPayrollId && Number(currentPayrollId) > 2,
-    },
-  });
-
-  /* ==================== WRITE CONTRACT ==================== */
-
-  const { writeContract, isPending } = useWriteContract();
-
-  /* ==================== FORMAT DATA ==================== */
-
-  const formatPayrollData = (data: unknown) => {
-    if (!data) return null;
-    const payrollData = data as [
-      bigint,
-      string,
-      bigint,
-      bigint,
-      bigint,
-      string,
-      boolean
-    ];
-    const [
-      id,
-      employer,
-      timestamp,
-      totalAmount,
-      employeeCount,
-      merkleRoot,
-      isCompleted,
-    ] = payrollData;
-    return {
-      id: Number(id),
-      date: new Date(Number(timestamp) * 1000),
-      amount: formatBalance(totalAmount),
-      employees: Number(employeeCount),
-      completed: isCompleted,
-    };
+    createPayrollRun(
+      {
+        contractId: payrollManagerContract.contractId,
+        employer: employerParty,
+        employeeProfiles: activeEmployeeRecords.map((employee) => employee.payload),
+        timestamp: new Date().toISOString(),
+      },
+      {
+        onSuccess: () => {
+          setIsRunDialogOpen(false);
+        },
+        onError: (error) => {
+          alert(`Failed to run payroll: ${error.message}`);
+        },
+      },
+    );
   };
 
-  const formattedMonthlyBalance = formatBalance(
-    monthlyPayrollCost as bigint | undefined
-  );
-  const formattedUserBalance = formatBalance(userBalance as bigint | undefined);
-  const formattedEmployerBalance = formatBalance(
-    employerBalance as bigint | undefined
-  );
-  const formattedAllowance = formatBalance(allowance as bigint | undefined);
-
-  // console.log("Payroll Debug:", {
-  //   employerBalance,
-  //   formattedEmployerBalance,
-  //   monthlyPayrollCost: monthlyPayrollCost?.toString(),
-  //   formattedMonthlyBalance,
-  //   userBalance,
-  //   formattedUserBalance,
-  //   allowance: allowance?.toString(),
-  //   formattedAllowance,
-  //   totalContractBalance,
-  //   displayBalance,
-  //   isAdmin: address === "0x11f7eaC93C9DD552DFD657BE52007A25E200f356",
-  //   isUsingTotalBalance:
-  //     address === "0x11f7eaC93C9DD552DFD657BE52007A25E200f356",
-  // });
-
-  const hasSufficientFunds = displayBalance >= formattedMonthlyBalance;
-
-  const history = [
-    formatPayrollData(payrollHistory1),
-    formatPayrollData(payrollHistory2),
-    formatPayrollData(payrollHistory3),
-  ].filter((item): item is NonNullable<typeof item> => item !== null);
-
   if (!authenticated) {
-    return <div>Please Login to check balance</div>;
+    return <div>Please log in to manage payroll.</div>;
   }
 
-  if (isEmployer === false) {
+  if (isEmployerLoading) {
     return (
-      <div className="p-4 md:p-8 bg-[#114277] min-h-screen">
-        <div className="max-w-md mx-auto mt-8">
+      <div className="min-h-screen bg-[#114277] p-4 md:p-8">
+        <Card>
+          <CardContent className="pt-6 text-gray-600">
+            Loading payroll workspace...
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!isEmployer) {
+    return (
+      <div className="min-h-screen bg-[#114277] p-4 md:p-8">
+        <div className="mx-auto mt-8 max-w-md">
           <Card>
             <CardHeader>
               <CardTitle className="text-black">Register as Employer</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-gray-600 mb-4">
-                You need to register as an employer to manage payroll.
+              <p className="mb-4 text-sm text-gray-600">
+                Create your employer contract before running payroll workflows.
               </p>
               <Button
                 className="w-full gap-2"
-                onClick={() => (window.location.href = "/employees")}
+                onClick={() => router.push("/employees")}
               >
-                Go to Employees Page
+                Go to Employees
               </Button>
             </CardContent>
           </Card>
@@ -270,105 +167,45 @@ export default function PayrollPage() {
     );
   }
 
-  /* ==================== HANDLERS ==================== */
-
-  const handleApproval = () => {
-    if (!depositAmount || Number(depositAmount) <= 0) {
-      return alert("Please input amount");
-    }
-
-    const parsedAmount = parseInt(depositAmount, 10);
-
-    writeContract({
-      address: ARC_USDC_ADDR,
-      abi: USDCABI,
-      functionName: "approve",
-      args: [PAYROLL_REGISTRY_ADDRESS, BigInt(parsedAmount * 1_000_000)],
-    });
-
-    setStep("deposit");
-  };
-
-  const handleDeposit = () => {
-    if (!depositAmount || Number(depositAmount) <= 0) {
-      return alert("Please input amount");
-    }
-
-    const parsedAmount = parseInt(depositAmount, 10);
-
-    writeContract({
-      address: PAYROLL_REGISTRY_ADDRESS,
-      abi: PayrollContractABi.abi,
-      functionName: "depositPayroll",
-      args: [BigInt(parsedAmount * 1_000_000)], // ← FIXED: Convert to smallest units
-    });
-
-    setStep("closed");
-    setDepositAmount("");
-  };
-
-  // Execute payroll
-  const handlePayAll = () => {
-    writeContract({
-      address: PAYROLL_REGISTRY_ADDRESS,
-      abi: PayrollContractABi.abi,
-      functionName: "executePayroll",
-    });
-  };
-
-  console.log(step);
-
   return (
-    <div className="p-4 md:p-8 bg-[#114277] min-h-screen">
+    <div className="min-h-screen bg-[#114277] p-4 md:p-8">
       <div className="mb-6 md:mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold text-white">Payroll</h1>
-        <p className="text-gray-300 mt-2 text-sm md:text-base">
-          Manage deposits and payroll payments on Arc Network
+        <h1 className="text-2xl font-bold text-white md:text-3xl">Payroll</h1>
+        <p className="mt-2 text-sm text-gray-300 md:text-base">
+          Run payroll from your Daml ledger workspace without the old token
+          approval flow.
         </p>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
+      <div className="mb-6 grid grid-cols-2 gap-4 md:mb-8 md:grid-cols-4 md:gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">
-              Your USDC
+              Active Employees
             </CardTitle>
-            <Wallet className="h-4 w-4 text-blue-600" />
+            <Users className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900">
-              $
-              {ready
-                ? formattedUserBalance.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })
-                : "0.00"}
+              {activeEmployeeRecords.length}
             </div>
-            <p className="text-xs text-gray-500 mt-1">In your wallet</p>
+            <p className="mt-1 text-xs text-gray-500">Eligible for next payroll</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">
-              Your Balance
+              Monthly Total
             </CardTitle>
             <Wallet className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900">
-              $
-              {formattedDisplayBalance.toLocaleString(undefined, {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
+              ${monthlyPayrollTotal.toLocaleString()}
             </div>
-            <p className="text-xs text-gray-500 mt-1">
-              {address === "0x11f7eaC93C9DD552DFD657BE52007A25E200f356"
-                ? "Total in contract"
-                : "Available for payroll"}
+            <p className="mt-1 text-xs text-gray-500">
+              Sum of active employee salaries
             </p>
           </CardContent>
         </Card>
@@ -376,22 +213,15 @@ export default function PayrollPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">
-              Monthly Cost
+              Payroll Runs
             </CardTitle>
             <Send className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900">
-              $
-              {formattedMonthlyBalance.toLocaleString(undefined, {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
+              {totalPayrollRuns}
             </div>
-            <p className="text-xs text-gray-500 mt-1">
-              {Array.isArray(employerEmployees) ? employerEmployees.length : 0}{" "}
-              employees
-            </p>
+            <p className="mt-1 text-xs text-gray-500">Recorded on the ledger</p>
           </CardContent>
         </Card>
 
@@ -400,7 +230,7 @@ export default function PayrollPage() {
             <CardTitle className="text-sm font-medium text-gray-600">
               Status
             </CardTitle>
-            {hasSufficientFunds ? (
+            {canRunPayroll ? (
               <CheckCircle className="h-4 w-4 text-green-600" />
             ) : (
               <AlertCircle className="h-4 w-4 text-red-600" />
@@ -409,163 +239,105 @@ export default function PayrollPage() {
           <CardContent>
             <div
               className={`text-2xl font-bold ${
-                hasSufficientFunds ? "text-green-600" : "text-red-600"
+                canRunPayroll ? "text-green-600" : "text-red-600"
               }`}
             >
-              {hasSufficientFunds ? "Ready" : "Low Funds"}
+              {canRunPayroll ? "Ready" : "Blocked"}
             </div>
-            <p className="text-xs text-gray-500 mt-1">
-              {hasSufficientFunds ? "Can pay all" : "Need more USDC"}
+            <p className="mt-1 text-xs text-gray-500">
+              {canRunPayroll
+                ? "You can issue the next payroll run"
+                : "Add active employees to continue"}
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Action Buttons with Two-Step Dialog */}
-      <div className="flex flex-col sm:flex-row gap-3 md:gap-4 mb-6 md:mb-8">
-        <Dialog
-          open={step === "approve" || step === "deposit"}
-          onOpenChange={(open) => setStep(open ? "approve" : "closed")}
-        >
+      <div className="mb-6 flex flex-col gap-3 md:mb-8 sm:flex-row">
+        <Dialog open={isRunDialogOpen} onOpenChange={setIsRunDialogOpen}>
           <DialogTrigger asChild>
-            <Button variant="outline" className="gap-2 w-full sm:w-auto">
-              <Wallet className="h-4 w-4 text-black" />
-              <span className="text-black">Deposit USDC</span>
+            <Button className="w-full gap-2 sm:w-auto" disabled={!canRunPayroll}>
+              <Send className="h-4 w-4" />
+              Run Payroll
             </Button>
           </DialogTrigger>
-
-          {/* Step 1: Approval */}
-          {step === "approve" && (
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle className="text-black">
-                  Step 1: Approve USDC
-                </DialogTitle>
-                <DialogDescription>
-                  Allow the payroll contract to spend your USDC.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="amount" className="text-black">
-                    Amount (USDC)
-                  </Label>
-                  <Input
-                    id="amount"
-                    type="number"
-                    value={depositAmount}
-                    onChange={(e) => setDepositAmount(e.target.value)}
-                    placeholder="10000"
-                  />
-                </div>
-                <div className="text-sm space-y-1">
-                  <div className="text-gray-600">
-                    Your balance: ${formattedUserBalance.toLocaleString()}
-                  </div>
-                  <div className="text-gray-600">
-                    Approved amount: ${formattedAllowance.toLocaleString()}
-                  </div>
-                  <div className="text-gray-600">
-                    Contract balance: $
-                    {formattedEmployerBalance.toLocaleString()}
-                  </div>
-                </div>
-                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                  <p className="text-sm text-blue-800">
-                    💡 ERC20 tokens require approval before transfer for
-                    security.
-                  </p>
-                </div>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Confirm Payroll Run</DialogTitle>
+              <DialogDescription>
+                This creates a payroll run plus payment contracts for each
+                active employee on the Daml ledger.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-4 text-sm text-gray-700">
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+                <p>Employer party: {employerParty}</p>
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setStep("closed")}>
-                  Cancel
-                </Button>
-                <Button onClick={handleApproval} disabled={isPending}>
-                  {isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Approving...
-                    </>
-                  ) : (
-                    "Approve USDC"
-                  )}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          )}
-
-          {/* Step 2: Deposit */}
-          {step === "deposit" && (
-            <DialogContent className="sm:max-w-[425px] ">
-              <DialogHeader>
-                <DialogTitle>Step 2: Deposit</DialogTitle>
-                <DialogDescription>
-                  Complete the deposit to the payroll contract.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                  <p className="text-sm text-green-800">
-                    ✓ USDC approved! Click below to deposit.
-                  </p>
-                </div>
-                <div className="text-sm">
-                  Depositing:{" "}
-                  <span className="font-bold text-lg">
-                    ${Number(depositAmount).toLocaleString()} USDC
-                  </span>
-                </div>
+              <div className="flex items-center justify-between">
+                <span>Active employees</span>
+                <span className="font-semibold">{activeEmployeeRecords.length}</span>
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setStep("closed")}>
-                  Cancel
-                </Button>
-                <Button onClick={handleDeposit} disabled={isPending}>
-                  {isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Depositing...
-                    </>
-                  ) : (
-                    "Confirm Deposit"
-                  )}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          )}
+              <div className="flex items-center justify-between">
+                <span>Total payroll amount</span>
+                <span className="font-semibold">
+                  ${monthlyPayrollTotal.toLocaleString()}
+                </span>
+              </div>
+              <div className="rounded-lg border border-green-200 bg-green-50 p-3">
+                <p>
+                  Daml creates the payroll and employee payment contracts in one
+                  ledger workflow, so no extra approval step is needed.
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsRunDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleRunPayroll} disabled={isPending}>
+                {isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Running...
+                  </>
+                ) : (
+                  "Confirm Payroll"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
         </Dialog>
 
         <Button
-          className="gap-2 w-full sm:w-auto"
-          disabled={!hasSufficientFunds || isPending}
-          onClick={handlePayAll}
+          variant="outline"
+          className="w-full gap-2 sm:w-auto"
+          onClick={() => router.push("/employees")}
         >
-          {isPending ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              <span className="hidden sm:inline">Processing...</span>
-              <span className="sm:hidden">Processing</span>
-            </>
-          ) : (
-            <>
-              <Send className="h-4 w-4" />
-              <span className="hidden sm:inline">Pay All Employees</span>
-              <span className="sm:hidden">Pay All</span>
-            </>
-          )}
+          <Users className="h-4 w-4" />
+          Manage Employees
         </Button>
       </div>
 
-      {/* Payroll History - FIXED TO USE BLOCKCHAIN DATA */}
       <Card>
         <CardHeader>
           <CardTitle className="text-black">Payroll History</CardTitle>
         </CardHeader>
         <CardContent>
-          {history.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              No payroll history yet. Execute your first payroll.
+          {isEmployeesLoading || isPayrollsLoading ? (
+            <div className="py-8 text-center text-gray-500">
+              Loading payroll history...
+            </div>
+          ) : payrollsError ? (
+            <div className="py-8 text-center text-red-500">
+              Failed to load payroll history.
+            </div>
+          ) : payrollHistory.length === 0 ? (
+            <div className="py-8 text-center text-gray-500">
+              No payroll history yet. Run your first payroll to create payment
+              contracts.
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -573,38 +345,41 @@ export default function PayrollPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="min-w-[60px]">Run #</TableHead>
-                    <TableHead className="min-w-[100px]">Date</TableHead>
-                    <TableHead className="min-w-[70px]">Employees</TableHead>
-                    <TableHead className="min-w-[100px]">
-                      Total Amount
-                    </TableHead>
+                    <TableHead className="min-w-[110px]">Date</TableHead>
+                    <TableHead className="min-w-[80px]">Employees</TableHead>
+                    <TableHead className="min-w-[120px]">Total Amount</TableHead>
+                    <TableHead className="min-w-[80px]">Privacy</TableHead>
                     <TableHead className="min-w-[80px]">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {history.map((record) => (
-                    <TableRow key={record!.id} className="text-black">
+                  {payrollHistory.map((payroll) => (
+                    <TableRow key={payroll.contractId} className="text-black">
                       <TableCell className="font-medium">
-                        #{record!.id}
+                        #{Number(payroll.payload.payrollId)}
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
-                        {record!.date.toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
-                      </TableCell>
-                      <TableCell>{record!.employees}</TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        $
-                        {record!.amount.toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
+                        {new Date(payroll.payload.timestamp).toLocaleDateString(
+                          "en-US",
+                          {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          },
+                        )}
                       </TableCell>
                       <TableCell>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          {record!.completed ? "Completed" : "Pending"}
+                        {Number(payroll.payload.employeeCount)}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        ${Number(payroll.payload.totalAmount).toLocaleString()}
+                      </TableCell>
+                      <TableCell>
+                        {payroll.payload.isPublic ? "Public" : "Private"}
+                      </TableCell>
+                      <TableCell>
+                        <span className="inline-flex rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+                          {payroll.payload.isCompleted ? "Completed" : "Open"}
                         </span>
                       </TableCell>
                     </TableRow>
@@ -616,7 +391,6 @@ export default function PayrollPage() {
         </CardContent>
       </Card>
 
-      {/* Privacy & Auditor Controls */}
       <Card className="mt-6 border-purple-200 bg-gradient-to-br from-purple-50 to-blue-50">
         <CardHeader>
           <div className="flex items-center gap-2">
@@ -625,54 +399,58 @@ export default function PayrollPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 bg-white rounded-lg border border-purple-200">
-              <h3 className="font-semibold text-black mb-2">🔐 Private Payroll</h3>
-              <p className="text-sm text-gray-700 mb-3">
-                Your payroll data is private by default. Only you and authorized auditors can see details.
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="rounded-lg border border-purple-200 bg-white p-4">
+              <h3 className="mb-2 font-semibold text-black">
+                Private Payroll Runs
+              </h3>
+              <p className="mb-3 text-sm text-gray-700">
+                Payroll runs stay private by default and can be shared with
+                auditors only when you choose.
               </p>
               <Button
                 variant="outline"
                 className="w-full text-purple-600 border-purple-200 hover:bg-purple-50"
-                onClick={() => (window.location.href = "/auditors")}
+                onClick={() => router.push("/auditors")}
               >
                 Manage Auditor Access
               </Button>
             </div>
 
-            <div className="p-4 bg-white rounded-lg border border-blue-200">
-              <h3 className="font-semibold text-black mb-2">👥 Employee Privacy</h3>
-              <p className="text-sm text-gray-700 mb-3">
-                Each employee only sees their own payment. Other employees cannot access salary data.
+            <div className="rounded-lg border border-blue-200 bg-white p-4">
+              <h3 className="mb-2 font-semibold text-black">
+                Employee Payment View
+              </h3>
+              <p className="mb-3 text-sm text-gray-700">
+                Employees only see their own payment contracts and claim status
+                inside their portal.
               </p>
               <Button
                 variant="outline"
                 className="w-full text-blue-600 border-blue-200 hover:bg-blue-50"
-                onClick={() => (window.location.href = "/employee-portal")}
+                onClick={() => router.push("/employee-portal")}
               >
-                View Employee Portal
+                Open Employee Portal
               </Button>
             </div>
           </div>
 
-          <div className="p-4 bg-white rounded-lg border border-green-200">
-            <h3 className="font-semibold text-black mb-2">ℹ️ Privacy Features</h3>
-            <ul className="text-sm text-gray-700 space-y-1">
-              <li>✓ Salaries encrypted and only visible to employer and employee</li>
-              <li>✓ Payroll batches are private by default</li>
-              <li>✓ Grant auditor access for compliance and verification</li>
-              <li>✓ Employee wallet addresses not exposed publicly</li>
-              <li>✓ Role-based access control enforced at contract level</li>
+          <div className="rounded-lg border border-green-200 bg-white p-4">
+            <h3 className="mb-2 font-semibold text-black">How This Changed</h3>
+            <ul className="space-y-1 text-sm text-gray-700">
+              <li>No ERC20 approval step is required in the Daml workflow.</li>
+              <li>Running payroll creates payment contracts for each employee.</li>
+              <li>Auditor visibility is granted per payroll run, not globally.</li>
             </ul>
           </div>
 
-          <Button
-            variant="outline"
-            className="w-full text-indigo-600 border-indigo-200 hover:bg-indigo-50"
-            onClick={() => (window.location.href = "/privacy-demo")}
-          >
-            View Privacy Demo
-          </Button>
+          {latestPayroll && (
+            <div className="rounded-lg border border-indigo-200 bg-white p-4 text-sm text-gray-700">
+              Latest run #{Number(latestPayroll.payrollId)} paid{" "}
+              {Number(latestPayroll.employeeCount)} employees for $
+              {Number(latestPayroll.totalAmount).toLocaleString()}.
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

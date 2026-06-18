@@ -82,7 +82,7 @@ export default function DashboardPage() {
   if (isLoading && !isEmployer) {
     return (
       <div className="min-h-screen bg-[#114277] p-4 md:p-8">
-        <Card>
+        <Card className="text-black">
           <CardContent className="pt-6 text-gray-600">
             Loading employer workspace...
           </CardContent>
@@ -101,7 +101,7 @@ export default function DashboardPage() {
       </div>
 
       {!isEmployer ? (
-        <Card className="gap-2 border-blue-200 bg-gradient-to-r from-blue-50 to-cyan-50">
+        <Card className="gap-2 border-blue-200 bg-gradient-to-r from-blue-50 to-cyan-50 text-black">
           <CardContent className="pt-6">
             <div className="flex flex-col items-center gap-4 md:flex-row">
               <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full bg-blue-100">
@@ -139,7 +139,7 @@ export default function DashboardPage() {
       ) : (
         <>
           <div className="mb-6 grid grid-cols-2 gap-4 md:mb-8 lg:grid-cols-4 md:gap-6">
-            <Card>
+            <Card className="text-black">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-xs font-medium text-gray-600 md:text-sm">
                   Active Employees
@@ -156,7 +156,7 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="text-black">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-xs font-medium text-gray-600 md:text-sm">
                   Monthly Payroll
@@ -173,7 +173,7 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="text-black">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-xs font-medium text-gray-600 md:text-sm">
                   Payroll Runs
@@ -190,7 +190,7 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="text-black">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-xs font-medium text-gray-600 md:text-sm">
                   Latest Payroll
@@ -211,7 +211,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 md:gap-6">
-            <Card>
+            <Card className="text-black">
               <CardHeader>
                 <CardTitle className="text-lg font-semibold text-black">
                   Recent Payroll Runs
@@ -268,7 +268,7 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="text-black">
               <CardHeader>
                 <CardTitle className="text-lg font-semibold text-black">
                   Ledger Status
@@ -312,7 +312,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="mt-6 md:mt-8">
-            <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-blue-50">
+            <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-blue-50 text-black">
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <Lock className="h-5 w-5 text-purple-600" />

@@ -1,20 +1,18 @@
 "use client";
 
 import { PrivyProvider } from "@privy-io/react-auth";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
 
 interface ProvidersProps {
   children: React.ReactNode;
 }
 
 export function Providers({ children }: ProvidersProps) {
-  const [queryClient] = useState(() => new QueryClient());
+  const privyAppId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
 
   return (
-    <QueryClientProvider client={queryClient}>
+    privyAppId ? (
       <PrivyProvider
-        appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ""}
+        appId={privyAppId}
         config={{
           appearance: {
             theme: "light",
@@ -24,7 +22,6 @@ export function Providers({ children }: ProvidersProps) {
             ethereum: {
               createOnLogin: "users-without-wallets",
             },
-            // Explicitly disable Solana
             solana: {
               createOnLogin: "off",
             },
@@ -34,6 +31,16 @@ export function Providers({ children }: ProvidersProps) {
       >
         {children}
       </PrivyProvider>
-    </QueryClientProvider>
+    ) : (
+      <div className="flex min-h-screen items-center justify-center bg-[#114277] p-6 text-white">
+        <div className="max-w-md text-center">
+          <h1 className="text-2xl font-semibold">Privy setup required</h1>
+          <p className="mt-3 text-sm text-blue-100">
+            Set <code>NEXT_PUBLIC_PRIVY_APP_ID</code> to enable authentication
+            and load the Daml payroll workspace.
+          </p>
+        </div>
+      </div>
+    )
   );
 }

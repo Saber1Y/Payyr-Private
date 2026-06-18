@@ -13,6 +13,7 @@ import {
   Lock,
   ShieldCheck,
   TrendingUp,
+  UserPlus,
   Users,
   Wallet,
 } from "lucide-react";

@@ -44,6 +44,7 @@ import { ContractRecord, damlClient } from "@/lib/daml/client";
 import { ensureEmployerContract } from "@/lib/daml/employeeRegistry";
 import type { Employer } from "@/lib/daml/employeeRegistry";
 import { resolveDamlParty } from "@/lib/daml/partyMapper";
+import { useDamlParty } from "@/hooks/useDamlParty";
 
 interface FormData {
   name: string;
@@ -54,8 +55,9 @@ interface FormData {
 }
 
 export default function EmployeesPage() {
-  const { user, ready, authenticated } = usePrivy();
-  const employerParty = resolveDamlParty(user?.wallet?.address);
+  const { ready, authenticated } = usePrivy();
+  const { walletAddress, damlParty: employerParty, hasMappedParty } =
+    useDamlParty();
 
   useEffect(() => {
     damlClient.setParty(employerParty);
@@ -115,6 +117,13 @@ export default function EmployeesPage() {
 
     if (!employerParty) {
       alert("Please authenticate first");
+      return;
+    }
+
+    if (!hasMappedParty) {
+      alert(
+        `Connected wallet ${walletAddress ?? ""} is not mapped to a Daml party. Sign in with the employer wallet from NEXT_PUBLIC_DAML_PARTY_MAP.`,
+      );
       return;
     }
 

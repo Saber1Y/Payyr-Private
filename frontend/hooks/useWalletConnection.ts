@@ -2,6 +2,7 @@
 
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { useCallback } from "react";
+import { resolveDamlParty } from "@/lib/daml/partyMapper";
 
 export function useWalletConnection() {
   const {
@@ -36,9 +37,13 @@ export function useWalletConnection() {
     await logout();
   }, [logout]);
 
-  // Get the primary wallet
-  const primaryWallet = wallets[0];
+  const primaryWallet =
+    wallets.find((wallet) => resolveDamlParty(wallet.address).includes("::")) ??
+    wallets.find((wallet) => wallet.walletClientType !== "privy") ??
+    wallets[0];
   const walletAddress = primaryWallet?.address;
+  const hasMappedWallet = Boolean(walletAddress)
+    && resolveDamlParty(walletAddress).includes("::");
 
   return {
     // State
@@ -56,6 +61,7 @@ export function useWalletConnection() {
     disconnectWallet,
 
     hasWallet: wallets.length > 0,
+    hasMappedWallet,
     isEmbeddedWallet: primaryWallet?.walletClientType === "privy",
   };
 }

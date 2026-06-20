@@ -4,6 +4,30 @@ This frontend now uses **Daml** contracts instead of Solidity/EVM.
 
 ## Setup
 
+### Fast local reset
+
+From the repo root, run:
+
+```bash
+node scripts/reset-local-daml.mjs
+```
+
+To reset the local stack and also seed demo data for browser verification, run:
+
+```bash
+node scripts/reset-local-daml.mjs --seed-demo
+```
+
+This command now:
+
+- builds the current DAR
+- starts a fresh local Daml stack on free ports
+- allocates employer, employee, and auditor parties
+- generates fresh JWTs
+- rewrites the Daml keys inside `frontend/.env.local`
+
+After it finishes, restart Next.js so the frontend picks up the refreshed env.
+
 ### 1. Start the Daml ledger
 
 ```bash
@@ -51,9 +75,13 @@ Add these values to `frontend/.env.local`:
 ```bash
 NEXT_PUBLIC_DAML_LEDGER_ID=sandbox
 DAML_API_URL=http://127.0.0.1:7575
+NEXT_PUBLIC_DAML_API_URL=http://127.0.0.1:7575
 DAML_ACCESS_TOKEN=<your-jwt-token>
-NEXT_PUBLIC_DAML_PACKAGE_ID=9837daaf0ed0c265c8f96023158d3a085a6d2b2d4fe5f9e60ad361ecc219ca94
+NEXT_PUBLIC_DAML_PACKAGE_ID=<current-dar-package-id>
 NEXT_PUBLIC_DAML_PARTY_MAP={"0xEMPLOYER_WALLET":"0xEMPLOYER_WALLET::<party-suffix>","0xEMPLOYEE_WALLET":"0xEMPLOYEE_WALLET::<party-suffix>","0xAUDITOR_WALLET":"0xAUDITOR_WALLET::<party-suffix>"}
+DAML_EMPLOYER_WALLET=<wallet-address>
+DAML_EMPLOYEE_WALLET=<wallet-address>
+DAML_AUDITOR_WALLET=<wallet-address>
 ```
 
 The frontend proxy now expects the real Daml JWT in `DAML_ACCESS_TOKEN` on the
@@ -62,9 +90,9 @@ For local sandbox testing, generate a JWT whose Daml claims include the ledger
 id, an application id, and the allocated parties you want to act/read as.
 `NEXT_PUBLIC_DAML_PARTY_MAP` maps the raw Privy wallet addresses used by the UI
 to the canonical Daml party identifiers returned by `/v1/parties/allocate`.
-`NEXT_PUBLIC_DAML_PACKAGE_ID` should match the main package id in your DAR.
-For the current build, that package id is
-`9837daaf0ed0c265c8f96023158d3a085a6d2b2d4fe5f9e60ad361ecc219ca94`.
+`NEXT_PUBLIC_DAML_PACKAGE_ID` must match the current DAR package id for the
+running ledger. The reset script writes the correct value automatically, which
+is safer than hardcoding an old package id.
 
 ### 4. Run Frontend
 

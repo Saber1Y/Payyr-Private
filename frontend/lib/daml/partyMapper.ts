@@ -6,7 +6,13 @@ function parsePartyMap(): Record<string, string> {
   }
 
   try {
-    const parsed = JSON.parse(configuredPartyMap) as Record<string, string>;
+    const firstPass = JSON.parse(configuredPartyMap) as
+      | Record<string, string>
+      | string;
+    const parsed =
+      typeof firstPass === "string"
+        ? (JSON.parse(firstPass) as Record<string, string>)
+        : firstPass;
 
     return Object.fromEntries(
       Object.entries(parsed).map(([walletAddress, partyId]) => [

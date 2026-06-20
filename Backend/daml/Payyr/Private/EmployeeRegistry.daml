@@ -17,7 +17,7 @@ template Employer
   where
     signatory employer
 
-    choice RegisterEmployee : ContractId EmployeeProfile
+    nonconsuming choice RegisterEmployee : ContractId EmployeeProfile
       with
         employee : Party
         name : Text
@@ -61,7 +61,6 @@ template EmployeeProfile
       do
         assertMsg "Name cannot be empty" (newName /= "")
         assertMsg "Salary must be greater than 0" (newSalary > 0.0)
-        archive self
         create EmployeeProfile with
           employer = employer
           employee = employee
@@ -76,7 +75,6 @@ template EmployeeProfile
       controller employer
       do
         assertMsg "Employee already inactive" isActive
-        archive self
         create EmployeeProfile with
           employer = employer
           employee = employee
@@ -91,7 +89,6 @@ template EmployeeProfile
       controller employer
       do
         assertMsg "Employee already active" (not isActive)
-        archive self
         create EmployeeProfile with
           employer = employer
           employee = employee
@@ -108,7 +105,6 @@ template EmployeeProfile
       controller employer
       do
         assertMsg "Auditor already authorized" (not (containsParty auditor authorizedAuditors))
-        archive self
         create EmployeeProfile with
           employer = employer
           employee = employee
@@ -125,7 +121,6 @@ template EmployeeProfile
       controller employer
       do
         assertMsg "Auditor not authorized" (containsParty auditor authorizedAuditors)
-        archive self
         create EmployeeProfile with
           employer = employer
           employee = employee
@@ -136,7 +131,7 @@ template EmployeeProfile
           startDate = startDate
           authorizedAuditors = filter (/= auditor) authorizedAuditors
 
-    choice ViewOwnProfile : ()
+    nonconsuming choice ViewOwnProfile : ()
       controller employee
       do
         pure ()

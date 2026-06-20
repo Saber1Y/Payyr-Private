@@ -1,0 +1,187 @@
+module Payyr.Private.PayrollCc where
+
+import DA.Assert (assertWithinDeadline, assertDeadlineExceeded, (===))
+import DA.Optional (fromSome)
+import DA.TextMap as TextMap
+import DA.Time
+import Splice.Api.Token.MetadataV1
+import Splice.Api.Token.HoldingV1
+import Splice.Api.Token.AllocationRequestV1
+import Splice.Api.Token.AllocationV1 as Api.Token.AllocationV1
+
+require : CanAssert m => Text -> Bool -> m ()
+require msg invariant =
+  assertMsg ("The requirement '" <> msg <> "' was not met.") invariant
+
+payrollPaymentLegId : Text
+payrollPaymentLegId = "payrollPayment"
+
+template PayrollObligation
+  with
+    employer : Party
+    employee : Party
+    payrollRunId : Text
+    periodLabel : Text
+    role : Text
+    grossAmount : Decimal
+    instrumentId : InstrumentId
+    dueAt : Time
+    authorizedAuditors : [Party]
+  where
+    signatory employer
+    observer employee, authorizedAuditors
+
+    nonconsuming choice RequestCcSettlement : ContractId PayrollPaymentRequest
+      with
+        requestId : Text
+        requestedAt : Time
+        prepareUntil : Time
+        settleBefore : Time
+        description : Text
+      controller employer
+      do
+        assertMsg "Payroll run ID cannot be empty" (payrollRunId /= "")
+        assertMsg "Period label cannot be empty" (periodLabel /= "")
+        assertMsg "Description cannot be empty" (description /= "")
+        assertMsg "Gross amount must be greater than 0" (grossAmount > 0.0)
+        assertDeadlineExceeded "requestedAt" requestedAt
+        assertWithinDeadline "prepareUntil" prepareUntil
+        require "prepareUntil < settleBefore" (prepareUntil < settleBefore)
+        create PayrollPaymentRequest with
+          employer
+          employee
+          payrollRunId
+          periodLabel
+          role
+          grossAmount
+          instrumentId
+          dueAt
+          authorizedAuditors
+          requestId
+          requestedAt
+          prepareUntil
+          settleBefore
+          description
+
+template PayrollPaymentRequest
+  with
+    employer : Party
+    employee : Party
+    payrollRunId : Text
+    periodLabel : Text
+    role : Text
+    grossAmount : Decimal
+    instrumentId : InstrumentId
+    dueAt : Time
+    authorizedAuditors : [Party]
+    requestId : Text
+    requestedAt : Time
+    prepareUntil : Time
+    settleBefore : Time
+    description : Text
+  where
+    signatory employer, employee
+    observer authorizedAuditors
+
+    postconsuming choice CompletePayrollPayment : ContractId SettledPayrollPayment
+      with
+        allocationCid : ContractId Allocation
+        obligationCid : ContractId PayrollObligation
+        extraArgs : ExtraArgs
+      controller employer
+      do
+        assertWithinDeadline "settleBefore" settleBefore
+
+        alloc <- fetch @Allocation allocationCid
+        let allocView = view @Allocation alloc
+            thisView = view $ toInterface @AllocationRequest this
+            expectedTransferLeg = fromSome $ TextMap.lookup payrollPaymentLegId thisView.transferLegs
+            expectedSettlement = thisView.settlement
+
+        expectedTransferLeg === allocView.allocation.transferLeg
+        expectedSettlement === allocView.allocation.settlement
+
+        exercise allocationCid (Allocation_ExecuteTransfer extraArgs)
+
+        obligation <- fetch obligationCid
+        payrollRunId === obligation.payrollRunId
+        employer === obligation.employer
+        employee === obligation.employee
+        grossAmount === obligation.grossAmount
+        instrumentId === obligation.instrumentId
+
+        archive obligationCid
+        settledAt <- getTime
+        create SettledPayrollPayment with
+          employer
+          employee
+          payrollRunId
+          periodLabel
+          role
+          grossAmount
+          instrumentId
+          dueAt
+          settledAt
+          requestId
+          description
+          authorizedAuditors
+
+    interface instance AllocationRequest for PayrollPaymentRequest where
+      view =
+        let
+          meta = Metadata with
+            values =
+              TextMap.fromList
+                [ ("splice.lfdecentralizedtrust.org/reason", description)
+                , ("payyr.io/payrollRunId", payrollRunId)
+                , ("payyr.io/periodLabel", periodLabel)
+                , ("payyr.io/role", role)
+                ]
+        in
+          AllocationRequestView with
+            settlement =
+              SettlementInfo with
+                executor = employer
+                requestedAt
+                allocateBefore = prepareUntil
+                settleBefore
+                settlementRef =
+                  Reference with
+                    id = requestId
+                    cid = None
+                meta
+            transferLegs =
+              TextMap.fromList
+                [ (payrollPaymentLegId, Api.Token.AllocationV1.TransferLeg with
+                    sender = employer
+                    receiver = employee
+                    amount = grossAmount
+                    instrumentId
+                    meta)
+                ]
+            meta
+
+      allocationRequest_RejectImpl _ AllocationRequest_Reject{..} = do
+        require "Actor is the payroll sender" (actor == employer)
+        pure ChoiceExecutionMetadata with meta = emptyMetadata
+
+      allocationRequest_WithdrawImpl _ _ =
+        pure ChoiceExecutionMetadata with meta = emptyMetadata
+
+template SettledPayrollPayment
+  with
+    employer : Party
+    employee : Party
+    payrollRunId : Text
+    periodLabel : Text
+    role : Text
+    grossAmount : Decimal
+    instrumentId : InstrumentId
+    dueAt : Time
+    settledAt : Time
+    requestId : Text
+    description : Text
+    authorizedAuditors : [Party]
+  where
+    signatory employer
+    observer employee, authorizedAuditors

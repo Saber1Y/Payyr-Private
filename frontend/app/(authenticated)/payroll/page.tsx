@@ -99,7 +99,8 @@ export default function PayrollPage() {
     let payrollManagerContract: ContractRecord<PayrollManager>;
 
     try {
-      payrollManagerContract = await ensurePayrollManagerContract(employerParty);
+      payrollManagerContract =
+        await ensurePayrollManagerContract(employerParty);
     } catch (error) {
       const message =
         error instanceof Error
@@ -113,7 +114,9 @@ export default function PayrollPage() {
       {
         contractId: payrollManagerContract.contractId,
         employer: employerParty,
-        employeeProfiles: activeEmployeeRecords.map((employee) => employee.payload),
+        employeeProfiles: activeEmployeeRecords.map(
+          (employee) => employee.payload,
+        ),
         timestamp: new Date().toISOString(),
       },
       {
@@ -190,7 +193,9 @@ export default function PayrollPage() {
             <div className="text-2xl font-bold text-gray-900">
               {activeEmployeeRecords.length}
             </div>
-            <p className="mt-1 text-xs text-gray-500">Eligible for next payroll</p>
+            <p className="mt-1 text-xs text-gray-500">
+              Eligible for next payroll
+            </p>
           </CardContent>
         </Card>
 
@@ -257,35 +262,52 @@ export default function PayrollPage() {
       <div className="mb-6 flex flex-col gap-3 md:mb-8 sm:flex-row">
         <Dialog open={isRunDialogOpen} onOpenChange={setIsRunDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="w-full gap-2 sm:w-auto" disabled={!canRunPayroll}>
+            <Button
+              className="w-full gap-2 sm:w-auto"
+              disabled={!canRunPayroll}
+            >
               <Send className="h-4 w-4" />
               Run Payroll
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>Confirm Payroll Run</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-black py-2">
+                Confirm Payroll Run
+              </DialogTitle>
+              <DialogDescription className="max-w-sm whitespace-normal break-words">
                 This creates a payroll run plus payment contracts for each
                 active employee on the Daml ledger.
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-3 py-4 text-sm text-gray-700">
-              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
-                <p>Employer party: {employerParty}</p>
+            <div className="space-y-4 py-4 text-sm text-gray-700">
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                <p className="wrap-break-word leading-relaxed max-w-sm whitespace-normal">
+                  <span className="font-medium text-gray-900">
+                    Employer party:
+                  </span>{" "}
+                  {employerParty}
+                </p>
               </div>
-              <div className="flex items-center justify-between">
-                <span>Active employees</span>
-                <span className="font-semibold">{activeEmployeeRecords.length}</span>
+
+              <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-gray-600">Active employees</span>
+                  <span className="font-semibold text-gray-900">
+                    {activeEmployeeRecords.length}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-gray-600">Total payroll amount</span>
+                  <span className="font-semibold text-gray-900">
+                    ${monthlyPayrollTotal.toLocaleString()}
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center justify-between">
-                <span>Total payroll amount</span>
-                <span className="font-semibold">
-                  ${monthlyPayrollTotal.toLocaleString()}
-                </span>
-              </div>
-              <div className="rounded-lg border border-green-200 bg-green-50 p-3">
-                <p>
+
+              <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+                <p className="leading-relaxed text-green-900">
                   Daml creates the payroll and employee payment contracts in one
                   ledger workflow, so no extra approval step is needed.
                 </p>
@@ -345,12 +367,24 @@ export default function PayrollPage() {
               <Table className="text-black">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="min-w-[60px] text-black">Run #</TableHead>
-                    <TableHead className="min-w-[110px] text-black">Date</TableHead>
-                    <TableHead className="min-w-[80px] text-black">Employees</TableHead>
-                    <TableHead className="min-w-[120px] text-black">Total Amount</TableHead>
-                    <TableHead className="min-w-[80px] text-black">Privacy</TableHead>
-                    <TableHead className="min-w-[80px] text-black">Status</TableHead>
+                    <TableHead className="min-w-[60px] text-black">
+                      Run #
+                    </TableHead>
+                    <TableHead className="min-w-[110px] text-black">
+                      Date
+                    </TableHead>
+                    <TableHead className="min-w-[80px] text-black">
+                      Employees
+                    </TableHead>
+                    <TableHead className="min-w-[120px] text-black">
+                      Total Amount
+                    </TableHead>
+                    <TableHead className="min-w-[80px] text-black">
+                      Privacy
+                    </TableHead>
+                    <TableHead className="min-w-[80px] text-black">
+                      Status
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -396,7 +430,9 @@ export default function PayrollPage() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-purple-600" />
-            <CardTitle className="text-black">Privacy & Auditor Controls</CardTitle>
+            <CardTitle className="text-black">
+              Privacy & Auditor Controls
+            </CardTitle>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -440,8 +476,12 @@ export default function PayrollPage() {
             <h3 className="mb-2 font-semibold text-black">How This Changed</h3>
             <ul className="space-y-1 text-sm text-gray-700">
               <li>No ERC20 approval step is required in the Daml workflow.</li>
-              <li>Running payroll creates payment contracts for each employee.</li>
-              <li>Auditor visibility is granted per payroll run, not globally.</li>
+              <li>
+                Running payroll creates payment contracts for each employee.
+              </li>
+              <li>
+                Auditor visibility is granted per payroll run, not globally.
+              </li>
             </ul>
           </div>
 

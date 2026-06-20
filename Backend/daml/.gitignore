@@ -1,3 +1,4 @@
 .daml/
 log/
 json-api-app.conf
+navigator.log

@@ -668,6 +668,10 @@ function stripOuterQuotes(value) {
 }
 
 function formatEnvValue(value) {
+  if (value.startsWith("{") && value.endsWith("}")) {
+    return value;
+  }
+
   return /[\s#"']/u.test(value) ? JSON.stringify(value) : value;
 }
 

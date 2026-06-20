@@ -115,15 +115,20 @@ export default function EmployeesPage() {
       return;
     }
 
-    if (!employerParty) {
-      alert("Please authenticate first");
+    if (!walletAddress) {
+      alert("Please connect your wallet first");
       return;
     }
 
     if (!hasMappedParty) {
       alert(
-        `Connected wallet ${walletAddress ?? ""} is not mapped to a Daml party. Sign in with the employer wallet from NEXT_PUBLIC_DAML_PARTY_MAP.`,
+        `Connected wallet ${walletAddress} is not mapped to a Daml party. Sign in with one of the seeded local test wallets or rerun the local Daml reset script.`,
       );
+      return;
+    }
+
+    if (!employerParty) {
+      alert("Your Daml employer party is still loading. Please try again.");
       return;
     }
 
@@ -255,6 +260,13 @@ export default function EmployeesPage() {
           <p className="text-gray-300 mt-2 text-sm md:text-base">
             Manage your team and their payroll settings
           </p>
+          {!hasMappedParty && walletAddress ? (
+            <p className="mt-3 text-sm text-yellow-200">
+              Connected wallet {walletAddress} is not mapped to a local Daml
+              party. Use one of the seeded test wallets or rerun the reset
+              script.
+            </p>
+          ) : null}
           <div className="mt-3 md:mt-4 flex gap-4 text-sm text-gray-300">
             <span>Total: {employees?.length || 0}</span>
             <span>Active: {activeCount}</span>

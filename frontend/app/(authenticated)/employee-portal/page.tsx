@@ -148,15 +148,16 @@ export default function EmployeePortalPage() {
                     key={payment.contractId}
                     className="flex flex-col gap-4 rounded-xl border bg-gray-50 p-4 md:flex-row md:items-center md:justify-between"
                   >
-                    <div>
+                    <div className="flex flex-col gap-1">
                       <p className="font-semibold text-gray-900">
                         Payroll #{payment.payload.payrollId}
                       </p>
-                      <p className="mt-1 text-sm text-gray-600">
+                      <p className="mt-1 text-sm text-gray-600 wrap-break-word leading-relaxed max-w-sm whitespace-normal">
                         Employer: {payment.payload.employer}
                       </p>
                       <p className="text-sm text-gray-600">
-                        Amount: ${Number(payment.payload.amount).toLocaleString()}
+                        Amount: $
+                        {Number(payment.payload.amount).toLocaleString()}
                       </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
@@ -217,7 +218,8 @@ export default function EmployeePortalPage() {
                 employer.
               </li>
               <li>
-                Claiming a payment updates the existing payroll record on-ledger.
+                Claiming a payment updates the existing payroll record
+                on-ledger.
               </li>
               <li>
                 Approved auditors only observe payroll runs, not your wallet

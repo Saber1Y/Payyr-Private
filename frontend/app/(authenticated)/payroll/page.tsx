@@ -275,7 +275,7 @@ export default function PayrollPage() {
               <DialogTitle className="text-black py-2">
                 Confirm Payroll Run
               </DialogTitle>
-              <DialogDescription className="max-w-sm whitespace-normal break-words">
+              <DialogDescription className="max-w-sm whitespace-normal">
                 This creates a payroll run plus payment contracts for each
                 active employee on the Daml ledger.
               </DialogDescription>

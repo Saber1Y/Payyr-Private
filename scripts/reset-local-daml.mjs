@@ -299,26 +299,10 @@ function detectRuntimeMode() {
 async function startSplitRuntime({ sandboxPort, jsonApiPort }) {
   const logDir = fs.mkdtempSync(path.join(os.tmpdir(), "payyr-private-daml-"));
   const sandboxLog = path.join(logDir, "sandbox.log");
-  const jsonApiLog = path.join(logDir, "json-api.log");
-  const jsonApiConfig = path.join(logDir, "json-api.conf");
-
-  fs.writeFileSync(
-    jsonApiConfig,
-    `{
-  server {
-    address = "127.0.0.1"
-    port = ${jsonApiPort}
-  }
-  ledger-api {
-    address = "127.0.0.1"
-    port = ${sandboxPort}
-  }
-  auth-config {
-    allow-insecure-tokens = true
-  }
-}
-`,
-  );
+  const adminApiPort = await getFreePort();
+  const sequencerPublicPort = await getFreePort();
+  const sequencerAdminPort = await getFreePort();
+  const mediatorAdminPort = await getFreePort();
 
   const sandboxPid = spawnDetached(
     "daml",
@@ -326,6 +310,16 @@ async function startSplitRuntime({ sandboxPort, jsonApiPort }) {
       "sandbox",
       "--port",
       String(sandboxPort),
+      "--json-api-port",
+      String(jsonApiPort),
+      "--admin-api-port",
+      String(adminApiPort),
+      "--sequencer-public-port",
+      String(sequencerPublicPort),
+      "--sequencer-admin-port",
+      String(sequencerAdminPort),
+      "--mediator-admin-port",
+      String(mediatorAdminPort),
       "--wall-clock-time",
       "--dar",
       darPath,
@@ -334,20 +328,20 @@ async function startSplitRuntime({ sandboxPort, jsonApiPort }) {
     sandboxLog,
   );
 
-  await waitForTcpPort(sandboxPort);
-
-  const jsonApiPid = spawnDetached(
-    "daml",
-    ["json-api", "--config", jsonApiConfig],
-    backendDamlDir,
-    jsonApiLog,
-  );
+  await waitForTcpPort(sandboxPort, 60000, sandboxLog);
 
   return {
     sandboxPort,
     jsonApiPort,
-    pids: [sandboxPid, jsonApiPid],
-    files: { logDir, sandboxLog, jsonApiLog, jsonApiConfig },
+    pids: [sandboxPid],
+    files: {
+      logDir,
+      sandboxLog,
+      adminApiPort,
+      sequencerPublicPort,
+      sequencerAdminPort,
+      mediatorAdminPort,
+    },
   };
 }
 
@@ -391,7 +385,7 @@ function spawnDetached(command, commandArgs, cwd, logFile) {
   return child.pid;
 }
 
-async function waitForTcpPort(port, timeoutMs = 60000) {
+async function waitForTcpPort(port, timeoutMs = 60000, logFile = null) {
   const started = Date.now();
 
   while (Date.now() - started < timeoutMs) {
@@ -411,7 +405,16 @@ async function waitForTcpPort(port, timeoutMs = 60000) {
     await delay(500);
   }
 
-  throw new Error(`Timed out waiting for port ${port}.`);
+  let details = `Timed out waiting for port ${port}.`;
+  if (logFile && fs.existsSync(logFile)) {
+    const excerpt = fs
+      .readFileSync(logFile, "utf8")
+      .split(/\r?\n/)
+      .slice(-30)
+      .join("\n");
+    details += `\nLast log lines from ${logFile}:\n${excerpt}`;
+  }
+  throw new Error(details);
 }
 
 async function waitForJsonApi(jsonApiPort, timeoutMs = 120000) {

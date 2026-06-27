@@ -287,13 +287,13 @@ function inspectPackageId() {
 }
 
 function detectRuntimeMode() {
-  const jsonApiHelp = spawnSync("daml", ["json-api", "--help"], {
+  const startHelp = spawnSync("daml", ["start", "--help"], {
     cwd: backendDamlDir,
     encoding: "utf8",
     env: withDamlPath(process.env),
   });
 
-  return jsonApiHelp.status === 0 ? "split" : "start";
+  return startHelp.status === 0 ? "start" : "split";
 }
 
 async function startSplitRuntime({ sandboxPort, jsonApiPort }) {
@@ -348,6 +348,10 @@ async function startSplitRuntime({ sandboxPort, jsonApiPort }) {
 async function startFallbackRuntime({ sandboxPort, jsonApiPort }) {
   const logDir = fs.mkdtempSync(path.join(os.tmpdir(), "payyr-private-daml-"));
   const runtimeLog = path.join(logDir, "daml-start.log");
+  const sandboxAdminApiPort = await getFreePort();
+  const sandboxSequencerPublicPort = await getFreePort();
+  const sandboxSequencerAdminPort = await getFreePort();
+  const sandboxMediatorAdminPort = await getFreePort();
 
   const startPid = spawnDetached(
     "daml",
@@ -357,6 +361,14 @@ async function startFallbackRuntime({ sandboxPort, jsonApiPort }) {
       String(sandboxPort),
       "--json-api-port",
       String(jsonApiPort),
+      "--sandbox-admin-api-port",
+      String(sandboxAdminApiPort),
+      "--sandbox-sequencer-public-port",
+      String(sandboxSequencerPublicPort),
+      "--sandbox-sequencer-admin-port",
+      String(sandboxSequencerAdminPort),
+      "--sandbox-mediator-admin-port",
+      String(sandboxMediatorAdminPort),
       "--wait-for-signal",
       "yes",
     ],
@@ -364,11 +376,20 @@ async function startFallbackRuntime({ sandboxPort, jsonApiPort }) {
     runtimeLog,
   );
 
+  await waitForTcpPort(sandboxPort, 60000, runtimeLog);
+
   return {
     sandboxPort,
     jsonApiPort,
     pids: [startPid],
-    files: { logDir, runtimeLog },
+    files: {
+      logDir,
+      runtimeLog,
+      sandboxAdminApiPort,
+      sandboxSequencerPublicPort,
+      sandboxSequencerAdminPort,
+      sandboxMediatorAdminPort,
+    },
   };
 }
 

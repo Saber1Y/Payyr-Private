@@ -11,6 +11,9 @@ nubParties : [Party] -> [Party]
 nubParties [] = []
 nubParties (x :: xs) = if containsParty x xs then nubParties xs else x :: nubParties xs
 
+privatePayrollCurrency : Text
+privatePayrollCurrency = "pUSD"
+
 template Employer
   with
     employer : Party
@@ -33,6 +36,7 @@ template Employer
           employee = employee
           name = name
           salary = salary
+          salaryCurrency = privatePayrollCurrency
           role = role
           isActive = True
           startDate = startDate
@@ -44,6 +48,7 @@ template EmployeeProfile
     employee : Party
     name : Text
     salary : Decimal
+    salaryCurrency : Text
     role : Text
     isActive : Bool
     startDate : Time
@@ -66,6 +71,7 @@ template EmployeeProfile
           employee = employee
           name = newName
           salary = newSalary
+          salaryCurrency = salaryCurrency
           role = newRole
           isActive = isActive
           startDate = startDate
@@ -80,6 +86,7 @@ template EmployeeProfile
           employee = employee
           name = name
           salary = salary
+          salaryCurrency = salaryCurrency
           role = role
           isActive = False
           startDate = startDate
@@ -94,6 +101,7 @@ template EmployeeProfile
           employee = employee
           name = name
           salary = salary
+          salaryCurrency = salaryCurrency
           role = role
           isActive = True
           startDate = startDate
@@ -110,6 +118,7 @@ template EmployeeProfile
           employee = employee
           name = name
           salary = salary
+          salaryCurrency = salaryCurrency
           role = role
           isActive = isActive
           startDate = startDate
@@ -126,6 +135,7 @@ template EmployeeProfile
           employee = employee
           name = name
           salary = salary
+          salaryCurrency = salaryCurrency
           role = role
           isActive = isActive
           startDate = startDate

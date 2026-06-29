@@ -522,6 +522,7 @@ async function seedDemoLedger({
   employerToken,
   employeeToken,
 }) {
+  const payrollCurrency = "pUSD";
   const employerTemplate = `${packageId}:Payyr.Private.EmployeeRegistry:Employer`;
   const employeeProfileTemplate = `${packageId}:Payyr.Private.EmployeeRegistry:EmployeeProfile`;
   const payrollManagerTemplate = `${packageId}:Payyr.Private.PayrollManager:PayrollManager`;
@@ -583,6 +584,7 @@ async function seedDemoLedger({
             employee: employeeParty,
             name: "Michael",
             salary: "5000.0",
+            salaryCurrency: payrollCurrency,
             role: "Engineer",
             isActive: true,
             startDate,

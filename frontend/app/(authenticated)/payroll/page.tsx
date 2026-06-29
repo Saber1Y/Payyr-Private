@@ -45,6 +45,7 @@ import {
   type PayrollManager,
 } from "@/lib/daml/payrollManager";
 import { useDamlParty } from "@/hooks/useDamlParty";
+import { DEFAULT_PAYROLL_CURRENCY, formatPayrollAmount } from "@/lib/payrollCurrency";
 
 export default function PayrollPage() {
   const router = useRouter();
@@ -176,8 +177,8 @@ export default function PayrollPage() {
       <div className="mb-6 md:mb-8">
         <h1 className="text-2xl font-bold text-white md:text-3xl">Payroll</h1>
         <p className="mt-2 text-sm text-gray-300 md:text-base">
-          Run payroll from your Daml ledger workspace without the old token
-          approval flow.
+          Run private payroll in {DEFAULT_PAYROLL_CURRENCY} from your Daml
+          ledger workspace.
         </p>
       </div>
 
@@ -208,10 +209,10 @@ export default function PayrollPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900">
-              ${monthlyPayrollTotal.toLocaleString()}
+              {formatPayrollAmount(monthlyPayrollTotal)}
             </div>
             <p className="mt-1 text-xs text-gray-500">
-              Sum of active employee salaries
+              Sum of active employee salaries in {DEFAULT_PAYROLL_CURRENCY}
             </p>
           </CardContent>
         </Card>
@@ -301,7 +302,7 @@ export default function PayrollPage() {
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-gray-600">Total payroll amount</span>
                   <span className="font-semibold text-gray-900">
-                    ${monthlyPayrollTotal.toLocaleString()}
+                    {formatPayrollAmount(monthlyPayrollTotal)}
                   </span>
                 </div>
               </div>
@@ -309,7 +310,8 @@ export default function PayrollPage() {
               <div className="rounded-lg border border-green-200 bg-green-50 p-4">
                 <p className="leading-relaxed text-green-900">
                   Daml creates the payroll and employee payment contracts in one
-                  ledger workflow, so no extra approval step is needed.
+                  ledger workflow using mock {DEFAULT_PAYROLL_CURRENCY}, so no
+                  external token approval step is needed for this MVP.
                 </p>
               </div>
             </div>
@@ -379,6 +381,9 @@ export default function PayrollPage() {
                     <TableHead className="min-w-[120px] text-black">
                       Total Amount
                     </TableHead>
+                    <TableHead className="min-w-[90px] text-black">
+                      Currency
+                    </TableHead>
                     <TableHead className="min-w-[80px] text-black">
                       Privacy
                     </TableHead>
@@ -407,7 +412,13 @@ export default function PayrollPage() {
                         {Number(payroll.payload.employeeCount)}
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
-                        ${Number(payroll.payload.totalAmount).toLocaleString()}
+                        {formatPayrollAmount(
+                          Number(payroll.payload.totalAmount),
+                          payroll.payload.paymentCurrency,
+                        )}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {payroll.payload.paymentCurrency}
                       </TableCell>
                       <TableCell>
                         {payroll.payload.isPublic ? "Public" : "Private"}
@@ -477,7 +488,7 @@ export default function PayrollPage() {
             <ul className="space-y-1 text-sm text-gray-700">
               <li>No ERC20 approval step is required in the Daml workflow.</li>
               <li>
-                Running payroll creates payment contracts for each employee.
+                Running payroll creates private {DEFAULT_PAYROLL_CURRENCY} payment contracts for each employee.
               </li>
               <li>
                 Auditor visibility is granted per payroll run, not globally.
@@ -488,8 +499,12 @@ export default function PayrollPage() {
           {latestPayroll && (
             <div className="rounded-lg border border-indigo-200 bg-white p-4 text-sm text-gray-700">
               Latest run #{Number(latestPayroll.payrollId)} paid{" "}
-              {Number(latestPayroll.employeeCount)} employees for $
-              {Number(latestPayroll.totalAmount).toLocaleString()}.
+              {Number(latestPayroll.employeeCount)} employees for{" "}
+              {formatPayrollAmount(
+                Number(latestPayroll.totalAmount),
+                latestPayroll.paymentCurrency,
+              )}
+              .
             </div>
           )}
         </CardContent>

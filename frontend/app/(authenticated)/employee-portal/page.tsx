@@ -8,7 +8,9 @@ import {
   CheckCircle2,
   Clock3,
   DollarSign,
+  FileText,
   Loader2,
+  ShieldCheck,
   Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -44,6 +46,7 @@ export default function EmployeePortalPage() {
   const pendingPayments = paymentRecords.filter(
     (payment) => !payment.payload.claimed,
   );
+  const latestPayment = paymentRecords[0];
 
   if (!authenticated) {
     return <div>Please log in to view your payment portal.</div>;
@@ -62,7 +65,7 @@ export default function EmployeePortalPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4 md:gap-6">
           <Card className="text-black">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-600">
@@ -113,18 +116,41 @@ export default function EmployeePortalPage() {
               </p>
             </CardContent>
           </Card>
+
+          <Card className="text-black">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Latest Receipt
+              </CardTitle>
+              <FileText className="h-4 w-4 text-indigo-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-lg font-bold text-gray-900">
+                {latestPayment
+                  ? `PR-${latestPayment.payload.payrollId}-${latestPayment.contractId.slice(
+                      0,
+                      6,
+                    )}`
+                  : "No receipt"}
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Private proof reference for your most recent payroll record
+              </p>
+            </CardContent>
+          </Card>
         </div>
 
         <Card className="text-black">
           <CardHeader>
             <CardTitle className="text-lg font-semibold text-black">
-              Payment History
+              Payment Receipts
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="mb-4 text-sm text-gray-600">
-              Private by default: these payment contracts are scoped to your
-              party.
+              Private by default: each receipt is scoped to your party and your
+              employer, with a proof reference you can use during payroll
+              support or audit review.
             </p>
 
             {isLoading ? (
@@ -147,65 +173,134 @@ export default function EmployeePortalPage() {
                 {paymentRecords.map((payment) => (
                   <div
                     key={payment.contractId}
-                    className="flex flex-col gap-4 rounded-xl border bg-gray-50 p-4 md:flex-row md:items-center md:justify-between"
+                    className="rounded-xl border bg-gray-50 p-4"
                   >
-                    <div className="flex flex-col gap-1">
-                      <p className="font-semibold text-gray-900">
-                        Payroll #{payment.payload.payrollId}
-                      </p>
-                      <p className="mt-1 text-sm text-gray-600 wrap-break-word leading-relaxed max-w-sm whitespace-normal">
-                        Employer: {payment.payload.employer}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        Amount:{" "}
-                        {formatPayrollAmount(
-                          Number(payment.payload.amount),
-                          payment.payload.paymentCurrency,
+                    <div className="flex flex-col gap-4">
+                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-semibold text-gray-900">
+                              Payroll #{payment.payload.payrollId}
+                            </p>
+                            <span
+                              className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${
+                                payment.payload.claimed
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-yellow-100 text-yellow-800"
+                              }`}
+                            >
+                              {payment.payload.claimed ? "Claimed" : "Pending"}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-2xl font-bold text-gray-900">
+                            {formatPayrollAmount(
+                              Number(payment.payload.amount),
+                              payment.payload.paymentCurrency,
+                            )}
+                          </p>
+                          <p className="mt-1 text-sm text-gray-600 wrap-break-word leading-relaxed max-w-md whitespace-normal">
+                            Employer: {payment.payload.employer}
+                          </p>
+                        </div>
+
+                        {!payment.payload.claimed && (
+                          <Button
+                            disabled={isPending}
+                            onClick={() =>
+                              claimPayment(payment.contractId, {
+                                onError: (claimError) => {
+                                  alert(
+                                    `Failed to claim payment: ${claimError.message}`,
+                                  );
+                                },
+                              })
+                            }
+                            className="gap-2"
+                          >
+                            {isPending ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Claiming...
+                              </>
+                            ) : (
+                              <>
+                                <Wallet className="h-4 w-4" />
+                                Claim Payment
+                              </>
+                            )}
+                          </Button>
                         )}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <span
-                        className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${
-                          payment.payload.claimed
-                            ? "bg-green-100 text-green-800"
-                            : "bg-yellow-100 text-yellow-800"
-                        }`}
-                      >
-                        {payment.payload.claimed ? "Claimed" : "Pending"}
-                      </span>
-                      {!payment.payload.claimed && (
-                        <Button
-                          disabled={isPending}
-                          onClick={() =>
-                            claimPayment(payment.contractId, {
-                              onError: (claimError) => {
-                                alert(
-                                  `Failed to claim payment: ${claimError.message}`,
-                                );
-                              },
-                            })
-                          }
-                          className="gap-2"
-                        >
-                          {isPending ? (
-                            <>
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              Claiming...
-                            </>
-                          ) : (
-                            <>
-                              <Wallet className="h-4 w-4" />
-                              Claim Payment
-                            </>
-                          )}
-                        </Button>
-                      )}
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-3 rounded-lg border border-gray-200 bg-white p-4 md:grid-cols-2">
+                        <div>
+                          <p className="text-xs uppercase tracking-wide text-gray-500">
+                            Receipt Reference
+                          </p>
+                          <p className="mt-1 font-mono text-sm text-gray-900">
+                            PR-{payment.payload.payrollId}-
+                            {payment.contractId.slice(0, 10)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs uppercase tracking-wide text-gray-500">
+                            Currency
+                          </p>
+                          <p className="mt-1 text-sm font-medium text-gray-900">
+                            {payment.payload.paymentCurrency}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs uppercase tracking-wide text-gray-500">
+                            Receipt Scope
+                          </p>
+                          <p className="mt-1 text-sm font-medium text-gray-900">
+                            Employee + Employer only
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs uppercase tracking-wide text-gray-500">
+                            Proof Status
+                          </p>
+                          <p className="mt-1 text-sm font-medium text-gray-900">
+                            {payment.payload.claimed
+                              ? "Acknowledged on ledger"
+                              : "Awaiting employee claim"}
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-blue-200 bg-blue-50 text-black">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-blue-900" />
+              <CardTitle className="text-lg font-semibold text-blue-900">
+                Receipt Proof
+              </CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-1 text-sm text-blue-800">
+              <li>
+                Each payroll receipt includes a private reference tied to the
+                ledger contract.
+              </li>
+              <li>
+                Your employer can use that reference to reconcile support
+                requests without exposing other employees.
+              </li>
+              <li>
+                Claimed receipts act as your acknowledgement of the payroll
+                record on-ledger.
+              </li>
+            </ul>
           </CardContent>
         </Card>
 

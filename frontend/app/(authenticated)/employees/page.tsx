@@ -45,6 +45,7 @@ import { ensureEmployerContract } from "@/lib/daml/employeeRegistry";
 import type { Employer } from "@/lib/daml/employeeRegistry";
 import { resolveDamlParty } from "@/lib/daml/partyMapper";
 import { useDamlParty } from "@/hooks/useDamlParty";
+import { formatPayrollAmount, getSalaryLabel } from "@/lib/payrollCurrency";
 
 interface FormData {
   name: string;
@@ -285,7 +286,7 @@ export default function EmployeesPage() {
             <DialogHeader>
               <DialogTitle className="text-black">Add New Employee</DialogTitle>
               <DialogDescription className="text-gray-600">
-                Register a new employee to your payroll system.
+                Register a new employee and define their private pUSD payroll.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -333,7 +334,7 @@ export default function EmployeesPage() {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="salary" className="text-black">
-                  Monthly Salary
+                  {getSalaryLabel()}
                 </Label>
                 <Input
                   id="salary"
@@ -403,6 +404,7 @@ export default function EmployeesPage() {
                       Role
                     </TableHead>
                     <TableHead className="min-w-[100px] text-black">Salary</TableHead>
+                    <TableHead className="min-w-[100px] text-black">Currency</TableHead>
                     <TableHead className="min-w-[80px] text-black">Status</TableHead>
                     <TableHead className="text-right min-w-[120px] text-black">
                       Actions
@@ -430,7 +432,13 @@ export default function EmployeesPage() {
                           {record.role}
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
-                          ${Number(record.salary).toLocaleString()}
+                          {formatPayrollAmount(
+                            Number(record.salary),
+                            record.salaryCurrency,
+                          )}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          {record.salaryCurrency}
                         </TableCell>
                         <TableCell>
                           <span
@@ -497,7 +505,7 @@ export default function EmployeesPage() {
           <DialogHeader>
             <DialogTitle className="text-black">Edit Employee</DialogTitle>
             <DialogDescription className="text-gray-600">
-              Update employee information and payroll settings.
+              Update employee information and private pUSD payroll settings.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -529,7 +537,7 @@ export default function EmployeesPage() {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="edit-salary" className="text-black">
-                Monthly Salary
+                {getSalaryLabel()}
               </Label>
               <Input
                 id="edit-salary"

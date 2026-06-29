@@ -274,10 +274,9 @@ export function formatForDisplay(
   }
 
   if (typeof value === 'number') {
-    return `$${value.toLocaleString('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`;
+    return formatPayrollAmount(
+      Number(value.toFixed(2)),
+    );
   }
 
   return value;
@@ -304,3 +303,4 @@ export function getPrivacyStatus(user: UserContext, payroll: PayrollContext): Pr
       user.role === 'public' || payroll.isPrivate ? 'none' : 'minimal',
   };
 }
+import { formatPayrollAmount } from "./payrollCurrency";

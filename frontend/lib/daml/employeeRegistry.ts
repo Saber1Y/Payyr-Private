@@ -12,6 +12,7 @@ export interface EmployeeProfile {
   employee: string;
   name: string;
   salary: number;
+  salaryCurrency: string;
   role: string;
   isActive: boolean;
   startDate: string;

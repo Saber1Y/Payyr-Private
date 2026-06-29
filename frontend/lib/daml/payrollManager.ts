@@ -14,6 +14,7 @@ export interface PayrollRun {
   payrollId: number;
   timestamp: string;
   totalAmount: number;
+  paymentCurrency: string;
   employeeCount: number;
   isCompleted: boolean;
   authorizedAuditors: string[];
@@ -25,6 +26,7 @@ export interface EmployeePayment {
   employer: string;
   employee: string;
   amount: number;
+  paymentCurrency: string;
   claimed: boolean;
 }
 

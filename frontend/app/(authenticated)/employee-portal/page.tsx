@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useClaimPayment, useEmployeePayments } from "@/lib/daml/hooks";
 import { damlClient } from "@/lib/daml/client";
 import { useDamlParty } from "@/hooks/useDamlParty";
+import { DEFAULT_PAYROLL_CURRENCY, formatPayrollAmount } from "@/lib/payrollCurrency";
 
 export default function EmployeePortalPage() {
   const { authenticated } = usePrivy();
@@ -56,8 +57,8 @@ export default function EmployeePortalPage() {
             My Payments
           </h1>
           <p className="mt-2 text-sm text-gray-300 md:text-base">
-            View and claim payroll payments that are visible only to you and
-            your employer.
+            View and claim private {DEFAULT_PAYROLL_CURRENCY} payroll payments
+            that are visible only to you and your employer.
           </p>
         </div>
 
@@ -71,10 +72,10 @@ export default function EmployeePortalPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-gray-900">
-                ${totalEarned.toLocaleString()}
+                {formatPayrollAmount(totalEarned)}
               </div>
               <p className="mt-1 text-xs text-gray-500">
-                Value issued from payroll runs
+                Value issued from payroll runs in {DEFAULT_PAYROLL_CURRENCY}
               </p>
             </CardContent>
           </Card>
@@ -156,8 +157,11 @@ export default function EmployeePortalPage() {
                         Employer: {payment.payload.employer}
                       </p>
                       <p className="text-sm text-gray-600">
-                        Amount: $
-                        {Number(payment.payload.amount).toLocaleString()}
+                        Amount:{" "}
+                        {formatPayrollAmount(
+                          Number(payment.payload.amount),
+                          payment.payload.paymentCurrency,
+                        )}
                       </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
@@ -223,7 +227,7 @@ export default function EmployeePortalPage() {
               </li>
               <li>
                 Approved auditors only observe payroll runs, not your wallet
-                flow.
+                details or private {DEFAULT_PAYROLL_CURRENCY} receipt view.
               </li>
             </ul>
           </CardContent>

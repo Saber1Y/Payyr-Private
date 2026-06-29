@@ -24,6 +24,7 @@ import {
 } from "@/lib/daml/hooks";
 import { damlClient } from "@/lib/daml/client";
 import { useDamlParty } from "@/hooks/useDamlParty";
+import { DEFAULT_PAYROLL_CURRENCY, formatPayrollAmount } from "@/lib/payrollCurrency";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -96,7 +97,8 @@ export default function DashboardPage() {
       <div className="mb-6 md:mb-8">
         <h1 className="text-2xl font-bold text-white md:text-3xl">Dashboard</h1>
         <p className="mt-2 text-sm text-gray-300 md:text-base">
-          Overview of your Daml payroll workspace and recent ledger activity.
+          Overview of your Daml payroll workspace, private {DEFAULT_PAYROLL_CURRENCY}
+          activity, and recent ledger history.
         </p>
       </div>
 
@@ -165,10 +167,10 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-xl font-bold text-gray-900 md:text-2xl">
-                  ${monthlyPayrollTotal.toLocaleString()}
+                  {formatPayrollAmount(monthlyPayrollTotal)}
                 </div>
                 <p className="mt-1 text-xs text-gray-500">
-                  Based on active employee contracts
+                  Based on active employee contracts in {DEFAULT_PAYROLL_CURRENCY}
                 </p>
               </CardContent>
             </Card>
@@ -199,7 +201,10 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-xl font-bold text-gray-900 md:text-2xl">
-                  ${latestPayrollAmount.toLocaleString()}
+                  {formatPayrollAmount(
+                    latestPayrollAmount,
+                    latestPayroll?.paymentCurrency,
+                  )}
                 </div>
                 <p className="mt-1 text-xs text-gray-500">
                   {latestPayroll
@@ -249,10 +254,11 @@ export default function DashboardPage() {
                         </div>
                         <div className="text-right">
                           <p className="font-medium text-red-600">
-                            -$
-                            {Number(
-                              payroll.payload.totalAmount,
-                            ).toLocaleString()}
+                            -
+                            {formatPayrollAmount(
+                              Number(payroll.payload.totalAmount),
+                              payroll.payload.paymentCurrency,
+                            )}
                           </p>
                           <p className="text-xs text-gray-500">
                             {Number(payroll.payload.employeeCount)} employees
@@ -328,8 +334,8 @@ export default function DashboardPage() {
                       Private Salary Records
                     </h3>
                     <p className="mb-3 text-sm text-gray-700">
-                      Salary and employee contracts stay scoped to the relevant
-                      Daml parties.
+                      Salary records and {DEFAULT_PAYROLL_CURRENCY} payroll
+                      contracts stay scoped to the relevant Daml parties.
                     </p>
                     <Button
                       variant="outline"

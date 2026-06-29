@@ -11,6 +11,9 @@ nubParties : [Party] -> [Party]
 nubParties [] = []
 nubParties (x :: xs) = if containsParty x xs then nubParties xs else x :: nubParties xs
 
+privatePayrollCurrency : Text
+privatePayrollCurrency = "pUSD"
+
 sumSalary : [EmployeeProfile] -> Decimal
 sumSalary = foldr (\ep acc -> ep.salary + acc) 0.0
 
@@ -22,6 +25,7 @@ createPayments (rp :: rps) payrollId employer = do
     employer = employer
     employee = rp.employee
     amount = rp.salary
+    paymentCurrency = rp.salaryCurrency
     claimed = False
   rest <- createPayments rps payrollId employer
   pure (cid :: rest)
@@ -30,6 +34,7 @@ template EmployerBalance
   with
     employer : Party
     balance : Decimal
+    currency : Text
   where
     signatory employer
 
@@ -39,6 +44,7 @@ template PayrollRun
     payrollId : Int
     timestamp : Time
     totalAmount : Decimal
+    paymentCurrency : Text
     employeeCount : Int
     isCompleted : Bool
     authorizedAuditors : [Party]
@@ -58,6 +64,7 @@ template PayrollRun
           payrollId = payrollId
           timestamp = timestamp
           totalAmount = totalAmount
+          paymentCurrency = paymentCurrency
           employeeCount = employeeCount
           isCompleted = isCompleted
           authorizedAuditors = auditor :: authorizedAuditors
@@ -74,6 +81,7 @@ template PayrollRun
           payrollId = payrollId
           timestamp = timestamp
           totalAmount = totalAmount
+          paymentCurrency = paymentCurrency
           employeeCount = employeeCount
           isCompleted = isCompleted
           authorizedAuditors = filter (/= auditor) authorizedAuditors
@@ -87,6 +95,7 @@ template PayrollRun
           payrollId = payrollId
           timestamp = timestamp
           totalAmount = totalAmount
+          paymentCurrency = paymentCurrency
           employeeCount = employeeCount
           isCompleted = isCompleted
           authorizedAuditors = authorizedAuditors
@@ -104,6 +113,7 @@ template PayrollRun
           employer = employer
           employee = employee
           amount = amount
+          paymentCurrency = paymentCurrency
           claimed = False
 
 template EmployeePayment
@@ -112,6 +122,7 @@ template EmployeePayment
     employer : Party
     employee : Party
     amount : Decimal
+    paymentCurrency : Text
     claimed : Bool
   where
     signatory employer
@@ -126,6 +137,7 @@ template EmployeePayment
           employer = employer
           employee = employee
           amount = amount
+          paymentCurrency = paymentCurrency
           claimed = True
 
 template PayrollManager
@@ -151,6 +163,7 @@ template PayrollManager
           payrollId = nextPayrollId
           timestamp = timestamp
           totalAmount = totalAmount
+          paymentCurrency = privatePayrollCurrency
           employeeCount = length activeProfiles
           isCompleted = True
           authorizedAuditors = []
@@ -171,3 +184,4 @@ template PayrollManager
         create EmployerBalance with
           employer = employer
           balance = amount
+          currency = privatePayrollCurrency

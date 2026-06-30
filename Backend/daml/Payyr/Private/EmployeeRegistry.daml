@@ -31,7 +31,7 @@ template Employer
       do
         assertMsg "Name cannot be empty" (name /= "")
         assertMsg "Salary must be greater than 0" (salary > 0.0)
-        create EmployeeProfile with
+        profileCid <- create EmployeeProfile with
           employer = employer
           employee = employee
           name = name
@@ -41,6 +41,13 @@ template Employer
           isActive = True
           startDate = startDate
           authorizedAuditors = []
+        create EmployeeWallet with
+          employer = employer
+          employee = employee
+          balance = 0.0
+          currency = privatePayrollCurrency
+          lastPaidAt = None
+        pure profileCid
 
 template EmployeeProfile
   with
@@ -145,3 +152,17 @@ template EmployeeProfile
       controller employee
       do
         pure ()
+
+template EmployeeWallet
+  with
+    employer : Party
+    employee : Party
+    balance : Decimal
+    currency : Text
+    lastPaidAt : Optional Time
+  where
+    signatory employer
+    observer employee
+
+    key (employer, employee) : (Party, Party)
+    maintainer key._1

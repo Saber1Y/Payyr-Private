@@ -36,7 +36,9 @@ import {
 import {
   useActiveEmployees,
   useCreatePayrollRun,
+  useEmployerBalances,
   useEmployerContracts,
+  useFundEmployerBalance,
   usePayrollsByEmployer,
 } from "@/lib/daml/hooks";
 import { ContractRecord, damlClient } from "@/lib/daml/client";
@@ -53,6 +55,8 @@ export default function PayrollPage() {
   const { damlParty: employerParty } = useDamlParty();
 
   const [isRunDialogOpen, setIsRunDialogOpen] = useState(false);
+  const [isFundDialogOpen, setIsFundDialogOpen] = useState(false);
+  const [fundAmount, setFundAmount] = useState("5000");
 
   useEffect(() => {
     damlClient.setParty(employerParty);
@@ -60,6 +64,8 @@ export default function PayrollPage() {
 
   const { data: employerContracts, isLoading: isEmployerLoading } =
     useEmployerContracts(employerParty);
+  const { data: employerBalances, isLoading: isBalanceLoading } =
+    useEmployerBalances(employerParty);
   const { data: activeEmployees, isLoading: isEmployeesLoading } =
     useActiveEmployees(employerParty);
   const {
@@ -68,6 +74,8 @@ export default function PayrollPage() {
     error: payrollsError,
   } = usePayrollsByEmployer(employerParty);
   const { mutate: createPayrollRun, isPending } = useCreatePayrollRun();
+  const { mutate: fundEmployerBalance, isPending: isFunding } =
+    useFundEmployerBalance();
 
   const isEmployer = (employerContracts?.length ?? 0) > 0;
   const activeEmployeeRecords = activeEmployees ?? [];
@@ -79,12 +87,32 @@ export default function PayrollPage() {
   }, [payrolls]);
   const payrollHistory = sortedPayrolls.slice(0, 10);
   const latestPayroll = payrollHistory[0]?.payload;
+  const employerBalanceRecord = employerBalances?.[0];
+  const availableTreasury = Number(
+    employerBalanceRecord?.payload.balance ?? 0,
+  );
+  const treasuryCurrency =
+    employerBalanceRecord?.payload.currency ?? DEFAULT_PAYROLL_CURRENCY;
   const monthlyPayrollTotal = activeEmployeeRecords.reduce(
     (sum, employee) => sum + Number(employee.payload.salary),
     0,
   );
   const totalPayrollRuns = sortedPayrolls.length;
-  const canRunPayroll = activeEmployeeRecords.length > 0 && !isPending;
+  const hasActiveEmployees = activeEmployeeRecords.length > 0;
+  const hasSufficientTreasury = availableTreasury >= monthlyPayrollTotal;
+  const canRunPayroll =
+    hasActiveEmployees && hasSufficientTreasury && !isPending;
+  const projectedTreasuryBalance = availableTreasury - monthlyPayrollTotal;
+  const statusLabel = !hasActiveEmployees
+    ? "Blocked"
+    : hasSufficientTreasury
+      ? "Ready"
+      : "Fund Treasury";
+  const statusDescription = !hasActiveEmployees
+    ? "Add active employees to continue"
+    : hasSufficientTreasury
+      ? "You can issue the next payroll run"
+      : "Top up employer treasury before running payroll";
 
   const handleRunPayroll = async () => {
     if (!employerParty) {
@@ -126,6 +154,51 @@ export default function PayrollPage() {
         },
         onError: (error) => {
           alert(`Failed to run payroll: ${error.message}`);
+        },
+      },
+    );
+  };
+
+  const handleFundTreasury = async () => {
+    if (!employerParty) {
+      alert("Please authenticate first.");
+      return;
+    }
+
+    const parsedAmount = Number(fundAmount);
+
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      alert("Enter a treasury funding amount greater than 0.");
+      return;
+    }
+
+    let payrollManagerContract: ContractRecord<PayrollManager>;
+
+    try {
+      payrollManagerContract =
+        await ensurePayrollManagerContract(employerParty);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to load payroll manager contract";
+      alert(`Error: ${message}`);
+      return;
+    }
+
+    fundEmployerBalance(
+      {
+        contractId: payrollManagerContract.contractId,
+        employer: employerParty,
+        amount: parsedAmount,
+      },
+      {
+        onSuccess: () => {
+          setIsFundDialogOpen(false);
+          setFundAmount("5000");
+        },
+        onError: (error) => {
+          alert(`Failed to fund treasury: ${error.message}`);
         },
       },
     );
@@ -182,7 +255,7 @@ export default function PayrollPage() {
         </p>
       </div>
 
-      <div className="mb-6 grid grid-cols-2 gap-4 md:mb-8 md:grid-cols-4 md:gap-6">
+      <div className="mb-6 grid grid-cols-1 gap-4 md:mb-8 md:grid-cols-2 xl:grid-cols-5 md:gap-6">
         <Card className="text-black">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">
@@ -203,9 +276,28 @@ export default function PayrollPage() {
         <Card className="text-black">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">
-              Monthly Total
+              Treasury Balance
             </CardTitle>
             <Wallet className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-gray-900">
+              {isBalanceLoading
+                ? "Loading..."
+                : formatPayrollAmount(availableTreasury, treasuryCurrency)}
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              Available private payroll funds for settlement
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="text-black">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">
+              Monthly Total
+            </CardTitle>
+            <Wallet className="h-4 w-4 text-emerald-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900">
@@ -249,18 +341,76 @@ export default function PayrollPage() {
                 canRunPayroll ? "text-green-600" : "text-red-600"
               }`}
             >
-              {canRunPayroll ? "Ready" : "Blocked"}
+              {statusLabel}
             </div>
             <p className="mt-1 text-xs text-gray-500">
-              {canRunPayroll
-                ? "You can issue the next payroll run"
-                : "Add active employees to continue"}
+              {statusDescription}
             </p>
           </CardContent>
         </Card>
       </div>
 
       <div className="mb-6 flex flex-col gap-3 md:mb-8 sm:flex-row">
+        <Dialog open={isFundDialogOpen} onOpenChange={setIsFundDialogOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" className="w-full gap-2 sm:w-auto">
+              <Wallet className="h-4 w-4" />
+              Fund Treasury
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle className="py-2 text-black">
+                Fund Private Treasury
+              </DialogTitle>
+              <DialogDescription className="max-w-sm whitespace-normal">
+                Add private {DEFAULT_PAYROLL_CURRENCY} to the employer treasury
+                before settling the next payroll run.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4 text-sm text-gray-700">
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                <p className="leading-relaxed text-blue-900">
+                  Current treasury balance:{" "}
+                  <span className="font-semibold">
+                    {formatPayrollAmount(availableTreasury, treasuryCurrency)}
+                  </span>
+                </p>
+              </div>
+              <label className="block space-y-2">
+                <span className="text-sm font-medium text-gray-900">
+                  Funding amount ({DEFAULT_PAYROLL_CURRENCY})
+                </span>
+                <input
+                  value={fundAmount}
+                  onChange={(event) => setFundAmount(event.target.value)}
+                  inputMode="decimal"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none ring-0 transition focus:border-blue-500"
+                  placeholder="5000"
+                />
+              </label>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsFundDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleFundTreasury} disabled={isFunding}>
+                {isFunding ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Funding...
+                  </>
+                ) : (
+                  "Add pUSD"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         <Dialog open={isRunDialogOpen} onOpenChange={setIsRunDialogOpen}>
           <DialogTrigger asChild>
             <Button
@@ -293,6 +443,13 @@ export default function PayrollPage() {
 
               <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-4">
                 <div className="flex items-center justify-between gap-4">
+                  <span className="text-gray-600">Treasury available</span>
+                  <span className="font-semibold text-gray-900">
+                    {formatPayrollAmount(availableTreasury, treasuryCurrency)}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between gap-4">
                   <span className="text-gray-600">Active employees</span>
                   <span className="font-semibold text-gray-900">
                     {activeEmployeeRecords.length}
@@ -305,13 +462,23 @@ export default function PayrollPage() {
                     {formatPayrollAmount(monthlyPayrollTotal)}
                   </span>
                 </div>
+
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-gray-600">Treasury after run</span>
+                  <span className="font-semibold text-gray-900">
+                    {formatPayrollAmount(
+                      Math.max(projectedTreasuryBalance, 0),
+                      treasuryCurrency,
+                    )}
+                  </span>
+                </div>
               </div>
 
               <div className="rounded-lg border border-green-200 bg-green-50 p-4">
                 <p className="leading-relaxed text-green-900">
-                  Daml creates the payroll and employee payment contracts in one
-                  ledger workflow using mock {DEFAULT_PAYROLL_CURRENCY}, so no
-                  external token approval step is needed for this MVP.
+                  Daml settles payroll by decrementing the employer treasury,
+                  creating private payment receipts, and crediting each
+                  employee&apos;s private pUSD wallet in one ledger workflow.
                 </p>
               </div>
             </div>
@@ -483,17 +650,17 @@ export default function PayrollPage() {
             </div>
           </div>
 
-          <div className="rounded-lg border border-green-200 bg-white p-4">
-            <h3 className="mb-2 font-semibold text-black">How This Changed</h3>
-            <ul className="space-y-1 text-sm text-gray-700">
-              <li>No ERC20 approval step is required in the Daml workflow.</li>
-              <li>
-                Running payroll creates private {DEFAULT_PAYROLL_CURRENCY} payment contracts for each employee.
-              </li>
-              <li>
-                Auditor visibility is granted per payroll run, not globally.
-              </li>
-            </ul>
+            <div className="rounded-lg border border-green-200 bg-white p-4">
+              <h3 className="mb-2 font-semibold text-black">How This Changed</h3>
+              <ul className="space-y-1 text-sm text-gray-700">
+                <li>Funding happens inside the private Daml treasury, not via public ERC20 approvals.</li>
+                <li>
+                  Running payroll debits employer treasury and credits each employee&apos;s private wallet.
+                </li>
+                <li>
+                  Auditor visibility is granted per payroll run, not globally.
+                </li>
+              </ul>
           </div>
 
           {latestPayroll && (

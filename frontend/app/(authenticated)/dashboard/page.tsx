@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
+import { NoAccessState } from "@/components/access/NoAccessState";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -29,7 +30,7 @@ import { DEFAULT_PAYROLL_CURRENCY, formatPayrollAmount } from "@/lib/payrollCurr
 export default function DashboardPage() {
   const router = useRouter();
   const { authenticated } = usePrivy();
-  const { damlParty: employerParty } = useDamlParty();
+  const { damlParty: employerParty, walletRole } = useDamlParty();
 
   useEffect(() => {
     damlClient.setParty(employerParty);
@@ -78,6 +79,12 @@ export default function DashboardPage() {
 
   if (!authenticated) {
     return <div>Please log in to view your payroll dashboard.</div>;
+  }
+
+  if (walletRole !== "employer") {
+    return (
+      <NoAccessState message="This dashboard is only available to the employer. This wallet is not authorized to view private payroll data." />
+    );
   }
 
   if (isLoading && !isEmployer) {

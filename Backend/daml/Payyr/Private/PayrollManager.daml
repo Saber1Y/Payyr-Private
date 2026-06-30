@@ -1,7 +1,7 @@
 module Payyr.Private.PayrollManager where
 
 import DA.List (filter)
-import Payyr.Private.EmployeeRegistry (EmployeeProfile, EmployeeWallet)
+import Payyr.Private.EmployeeRegistry (EmployeeProfile(..), EmployeeWallet(..))
 
 containsParty : Party -> [Party] -> Bool
 containsParty _ [] = False
@@ -18,7 +18,7 @@ sumSalary : [EmployeeProfile] -> Decimal
 sumSalary = foldr (\ep acc -> ep.salary + acc) 0.0
 
 createPayments : [EmployeeProfile] -> Int -> Party -> Time -> Update [ContractId EmployeePayment]
-createPayments [] _ _ = pure []
+createPayments [] _ _ _ = pure []
 createPayments (rp :: rps) payrollId employer settledAt = do
   cid <- create EmployeePayment with
     payrollId = payrollId
@@ -151,6 +151,7 @@ template PayrollRun
       controller employer
       do
         assertMsg "Amount must be greater than 0" (amount > 0.0)
+        issuedAt <- getTime
         create EmployeePayment with
           payrollId = payrollId
           employer = employer
@@ -158,6 +159,11 @@ template PayrollRun
           amount = amount
           paymentCurrency = paymentCurrency
           claimed = False
+          settled = True
+          issuedAt = issuedAt
+          claimedAt = None
+          settledAt = Some issuedAt
+          receiptReference = "PR-" <> show payrollId <> "-" <> show amount
 
 template EmployeePayment
   with
@@ -214,8 +220,8 @@ template PayrollManager
         employerBalanceCidMb <- lookupByKey @EmployerBalance employer
         employerBalanceCid <-
           case employerBalanceCidMb of
-            None -> abort "Employer treasury not initialized"
             Some cid -> pure cid
+            None -> abort "Employer treasury not initialized"
         employerBalance <- fetch employerBalanceCid
         assertMsg "Insufficient employer treasury balance" (employerBalance.balance >= totalAmount)
         assertMsg "Employer treasury must use pUSD" (employerBalance.currency == privatePayrollCurrency)
@@ -235,7 +241,7 @@ template PayrollManager
           employer = employerBalance.employer
           balance = employerBalance.balance - totalAmount
           currency = employerBalance.currency
-        paymentCids <- createPayments activeProfiles nextPayrollId employer timestamp
+        _ <- createPayments activeProfiles nextPayrollId employer timestamp
         creditEmployeeWallets activeProfiles employer timestamp
         create PayrollManager with
           admin = admin

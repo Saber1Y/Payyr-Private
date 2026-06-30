@@ -3,6 +3,7 @@
 export const dynamic = "force-dynamic";
 
 import { useEffect, useState } from "react";
+import { NoAccessState } from "@/components/access/NoAccessState";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -57,7 +58,7 @@ interface FormData {
 
 export default function EmployeesPage() {
   const { ready, authenticated } = usePrivy();
-  const { walletAddress, damlParty: employerParty, hasMappedParty } =
+  const { walletAddress, damlParty: employerParty, walletRole, hasMappedParty } =
     useDamlParty();
 
   useEffect(() => {
@@ -245,6 +246,12 @@ export default function EmployeesPage() {
           </CardContent>
         </Card>
       </div>
+    );
+  }
+
+  if (walletRole !== "employer") {
+    return (
+      <NoAccessState message="This employees page is only available to the employer. This wallet is not authorized to view private employee records." />
     );
   }
 

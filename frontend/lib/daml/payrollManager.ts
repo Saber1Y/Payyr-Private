@@ -8,6 +8,8 @@ export const EMPLOYEE_PAYMENT_TEMPLATE =
   getTemplateId("Payyr.Private.PayrollManager", "EmployeePayment");
 export const PAYROLL_MANAGER_TEMPLATE =
   getTemplateId("Payyr.Private.PayrollManager", "PayrollManager");
+export const EMPLOYER_BALANCE_TEMPLATE =
+  getTemplateId("Payyr.Private.PayrollManager", "EmployerBalance");
 
 export interface PayrollRun {
   employer: string;
@@ -28,6 +30,11 @@ export interface EmployeePayment {
   amount: number;
   paymentCurrency: string;
   claimed: boolean;
+  settled: boolean;
+  issuedAt: string;
+  claimedAt: string | null;
+  settledAt: string | null;
+  receiptReference: string;
 }
 
 export interface PayrollManager {
@@ -35,11 +42,25 @@ export interface PayrollManager {
   currentPayrollId: number;
 }
 
+export interface EmployerBalance {
+  employer: string;
+  balance: number;
+  currency: string;
+}
+
 export async function getPayrollManagerContracts(
   admin: string,
 ): Promise<ContractRecord<PayrollManager>[]> {
   return damlClient.queryContracts<PayrollManager>(PAYROLL_MANAGER_TEMPLATE, {
     admin,
+  });
+}
+
+export async function getEmployerBalances(
+  employer: string,
+): Promise<ContractRecord<EmployerBalance>[]> {
+  return damlClient.queryContracts<EmployerBalance>(EMPLOYER_BALANCE_TEMPLATE, {
+    employer,
   });
 }
 
@@ -153,7 +174,7 @@ export async function withdrawPayroll(
   contractId: string,
   employer: string,
   amount: number,
-): Promise<ContractRecord<unknown>> {
+): Promise<ContractRecord<EmployerBalance>> {
   return damlClient.exerciseChoice(
     PAYROLL_MANAGER_TEMPLATE,
     contractId,

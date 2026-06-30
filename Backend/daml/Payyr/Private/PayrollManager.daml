@@ -1,7 +1,7 @@
 module Payyr.Private.PayrollManager where
 
 import DA.List (filter)
-import Payyr.Private.EmployeeRegistry (EmployeeProfile)
+import Payyr.Private.EmployeeRegistry (EmployeeProfile, EmployeeWallet)
 
 containsParty : Party -> [Party] -> Bool
 containsParty _ [] = False
@@ -17,9 +17,9 @@ privatePayrollCurrency = "pUSD"
 sumSalary : [EmployeeProfile] -> Decimal
 sumSalary = foldr (\ep acc -> ep.salary + acc) 0.0
 
-createPayments : [EmployeeProfile] -> Int -> Party -> Update [ContractId EmployeePayment]
+createPayments : [EmployeeProfile] -> Int -> Party -> Time -> Update [ContractId EmployeePayment]
 createPayments [] _ _ = pure []
-createPayments (rp :: rps) payrollId employer = do
+createPayments (rp :: rps) payrollId employer settledAt = do
   cid <- create EmployeePayment with
     payrollId = payrollId
     employer = employer
@@ -27,8 +27,37 @@ createPayments (rp :: rps) payrollId employer = do
     amount = rp.salary
     paymentCurrency = rp.salaryCurrency
     claimed = False
-  rest <- createPayments rps payrollId employer
+    settled = True
+    issuedAt = settledAt
+    claimedAt = None
+    settledAt = Some settledAt
+    receiptReference = "PR-" <> show payrollId <> "-" <> rp.name
+  rest <- createPayments rps payrollId employer settledAt
   pure (cid :: rest)
+
+creditEmployeeWallets : [EmployeeProfile] -> Party -> Time -> Update ()
+creditEmployeeWallets [] _ _ = pure ()
+creditEmployeeWallets (rp :: rps) employer settledAt = do
+  walletCidMb <- lookupByKey @EmployeeWallet (employer, rp.employee)
+  case walletCidMb of
+    None -> do
+      create EmployeeWallet with
+        employer = employer
+        employee = rp.employee
+        balance = rp.salary
+        currency = rp.salaryCurrency
+        lastPaidAt = Some settledAt
+      creditEmployeeWallets rps employer settledAt
+    Some walletCid -> do
+      wallet <- fetch walletCid
+      archive walletCid
+      create EmployeeWallet with
+        employer = wallet.employer
+        employee = wallet.employee
+        balance = wallet.balance + rp.salary
+        currency = wallet.currency
+        lastPaidAt = Some settledAt
+      creditEmployeeWallets rps employer settledAt
 
 template EmployerBalance
   with
@@ -37,6 +66,20 @@ template EmployerBalance
     currency : Text
   where
     signatory employer
+
+    key employer : Party
+    maintainer key
+
+    choice TopUp : ContractId EmployerBalance
+      with
+        amount : Decimal
+      controller employer
+      do
+        assertMsg "Amount must be greater than 0" (amount > 0.0)
+        create EmployerBalance with
+          employer = employer
+          balance = balance + amount
+          currency = currency
 
 template PayrollRun
   with
@@ -124,6 +167,11 @@ template EmployeePayment
     amount : Decimal
     paymentCurrency : Text
     claimed : Bool
+    settled : Bool
+    issuedAt : Time
+    claimedAt : Optional Time
+    settledAt : Optional Time
+    receiptReference : Text
   where
     signatory employer
     observer employee
@@ -132,6 +180,7 @@ template EmployeePayment
       controller employee
       do
         assertMsg "Payroll already claimed" (not claimed)
+        now <- getTime
         create EmployeePayment with
           payrollId = payrollId
           employer = employer
@@ -139,6 +188,11 @@ template EmployeePayment
           amount = amount
           paymentCurrency = paymentCurrency
           claimed = True
+          settled = settled
+          issuedAt = issuedAt
+          claimedAt = Some now
+          settledAt = settledAt
+          receiptReference = receiptReference
 
 template PayrollManager
   with
@@ -157,6 +211,14 @@ template PayrollManager
         let activeProfiles = filter (\rp -> rp.isActive) employeeProfiles
         let totalAmount = sumSalary activeProfiles
         assertMsg "No active employees" (length activeProfiles > 0)
+        employerBalanceCidMb <- lookupByKey @EmployerBalance employer
+        employerBalanceCid <-
+          case employerBalanceCidMb of
+            None -> abort "Employer treasury not initialized"
+            Some cid -> pure cid
+        employerBalance <- fetch employerBalanceCid
+        assertMsg "Insufficient employer treasury balance" (employerBalance.balance >= totalAmount)
+        assertMsg "Employer treasury must use pUSD" (employerBalance.currency == privatePayrollCurrency)
         let nextPayrollId = currentPayrollId + 1
         payrollCid <- create PayrollRun with
           employer = employer
@@ -168,7 +230,13 @@ template PayrollManager
           isCompleted = True
           authorizedAuditors = []
           isPublic = False
-        paymentCids <- createPayments activeProfiles nextPayrollId employer
+        archive employerBalanceCid
+        create EmployerBalance with
+          employer = employerBalance.employer
+          balance = employerBalance.balance - totalAmount
+          currency = employerBalance.currency
+        paymentCids <- createPayments activeProfiles nextPayrollId employer timestamp
+        creditEmployeeWallets activeProfiles employer timestamp
         create PayrollManager with
           admin = admin
           currentPayrollId = nextPayrollId
@@ -181,7 +249,17 @@ template PayrollManager
       controller admin
       do
         assertMsg "Amount must be greater than 0" (amount > 0.0)
-        create EmployerBalance with
-          employer = employer
-          balance = amount
-          currency = privatePayrollCurrency
+        employerBalanceCidMb <- lookupByKey @EmployerBalance employer
+        case employerBalanceCidMb of
+          None ->
+            create EmployerBalance with
+              employer = employer
+              balance = amount
+              currency = privatePayrollCurrency
+          Some employerBalanceCid -> do
+            employerBalance <- fetch employerBalanceCid
+            archive employerBalanceCid
+            create EmployerBalance with
+              employer = employerBalance.employer
+              balance = employerBalance.balance + amount
+              currency = employerBalance.currency

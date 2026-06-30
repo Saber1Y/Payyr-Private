@@ -526,6 +526,7 @@ async function seedDemoLedger({
   const employerTemplate = `${packageId}:Payyr.Private.EmployeeRegistry:Employer`;
   const employeeProfileTemplate = `${packageId}:Payyr.Private.EmployeeRegistry:EmployeeProfile`;
   const payrollManagerTemplate = `${packageId}:Payyr.Private.PayrollManager:PayrollManager`;
+  const employerBalanceTemplate = `${packageId}:Payyr.Private.PayrollManager:EmployerBalance`;
   const payrollRunTemplate = `${packageId}:Payyr.Private.PayrollManager:PayrollRun`;
   const employeePaymentTemplate = `${packageId}:Payyr.Private.PayrollManager:EmployeePayment`;
   const startDate = "2026-06-20T00:00:00Z";
@@ -565,6 +566,19 @@ async function seedDemoLedger({
       payload: {
         admin: employerParty,
         currentPayrollId: 0,
+      },
+    },
+    employerToken,
+  );
+
+  const employerBalanceContract = await postJson(
+    `http://127.0.0.1:${jsonApiPort}/v1/create`,
+    {
+      templateId: employerBalanceTemplate,
+      payload: {
+        employer: employerParty,
+        balance: "10000.0",
+        currency: payrollCurrency,
       },
     },
     employerToken,
@@ -635,6 +649,7 @@ async function seedDemoLedger({
     employerContractId: employerContract.result.contractId,
     employeeProfileContractId: registerEmployeeResult.result.exerciseResult,
     payrollManagerContractId: payrollManagerContract.result.contractId,
+    employerBalanceContractId: employerBalanceContract.result.contractId,
     payrollRunContractId,
     employeePaymentContractId: employeePaymentEvent.created.contractId,
   };

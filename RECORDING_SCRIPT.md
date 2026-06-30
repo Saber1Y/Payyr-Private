@@ -32,9 +32,9 @@ Use these identities during the recording:
 Show that:
 
 1. the employer can create and manage private payroll records
-2. payroll runs use `pUSD`
-3. auditors only see what they are granted
-4. employees only see their own private payroll receipt
+2. payroll runs settle from a private `pUSD` treasury
+3. employees receive private wallet credits plus private receipts
+4. auditors only see what they are granted
 
 ## Suggested Recording Flow
 
@@ -77,7 +77,30 @@ What to point out:
 - employee record is private and structured
 - the employer can manage activation/deactivation
 
-### 3. Employer: Run Payroll
+### 3. Employer: Fund Treasury
+
+Go to:
+
+- `/payroll`
+
+Say:
+
+> Before payroll runs, the employer funds a private pUSD treasury inside the Daml workflow.
+
+Actions:
+
+1. Show the `Treasury Balance` card
+2. Click `Fund Treasury`
+3. Enter `5000`
+4. Submit
+
+What to point out:
+
+- treasury balance updates on-ledger
+- funding stays inside the private payroll workflow
+- no public ERC20 approval flow is required
+
+### 4. Employer: Run Payroll
 
 Go to:
 
@@ -90,18 +113,22 @@ Say:
 Actions:
 
 1. Show active employee count
-2. Show monthly payroll total
-3. Click `Run Payroll`
-4. Confirm the payroll run
+2. Show treasury balance
+3. Show monthly payroll total
+4. Show the projected treasury balance after the run
+5. Click `Run Payroll`
+6. Confirm the payroll run
 
 What to point out:
 
 - payroll run is created on-ledger
+- employer treasury decreases
+- employee wallet settlement happens in the same workflow
 - total amount is shown in `pUSD`
 - payroll history updates
 - privacy remains enabled
 
-### 4. Employer: Grant Auditor Access
+### 5. Employer: Grant Auditor Access
 
 Go to:
 
@@ -125,7 +152,7 @@ What to point out:
 - payroll run now appears as shared with an authorized auditor
 - access can be revoked at any time
 
-### 5. Employee: Private Receipt View
+### 6. Employee: Private Receipt View
 
 Log out, then log in as:
 
@@ -142,9 +169,11 @@ Say:
 What to show:
 
 - total payments
+- wallet balance
 - latest receipt
 - receipt reference
 - proof status
+- settled timestamp
 - amount in `pUSD`
 - employer reference
 
@@ -157,9 +186,10 @@ What to point out:
 
 - only this employee’s receipt is visible
 - receipt is private
+- wallet balance proves the private settlement already happened
 - proof reference is available without exposing other payroll records
 
-### 6. Auditor: Verification View
+### 7. Auditor: Verification View
 
 Log out, then log in as:
 
@@ -186,7 +216,7 @@ What to point out:
 Say:
 
 > Payyr Private shows how payroll can be coordinated privately on Canton.  
-> The employer manages payroll records, employees get private payment receipts, and auditors receive selective verification access — all without exposing payroll data publicly.
+> The employer funds and settles payroll privately in pUSD, employees get private wallet credits and receipts, and auditors receive selective verification access — all without exposing payroll data publicly.
 
 ## If Something Looks Off Before Recording
 
@@ -211,6 +241,6 @@ npm run dev -- --hostname 127.0.0.1 --port 3000
 - `pUSD` is the mock payroll currency used for the MVP
 - The strongest parts of the product are:
   - private salary records
-  - private payroll workflow
-  - employee-only receipts
+  - private treasury-backed payroll settlement
+  - employee-only wallet credits and receipts
   - selective auditor verification

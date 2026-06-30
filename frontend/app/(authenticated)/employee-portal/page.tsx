@@ -3,6 +3,7 @@
 export const dynamic = "force-dynamic";
 
 import { useEffect } from "react";
+import { useMemo } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import {
   CheckCircle2,
@@ -15,7 +16,11 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useClaimPayment, useEmployeePayments } from "@/lib/daml/hooks";
+import {
+  useClaimPayment,
+  useEmployeePayments,
+  useEmployeeWallets,
+} from "@/lib/daml/hooks";
 import { damlClient } from "@/lib/daml/client";
 import { useDamlParty } from "@/hooks/useDamlParty";
 import { DEFAULT_PAYROLL_CURRENCY, formatPayrollAmount } from "@/lib/payrollCurrency";
@@ -33,9 +38,20 @@ export default function EmployeePortalPage() {
     isLoading,
     error,
   } = useEmployeePayments(employeeParty);
+  const { data: wallets, isLoading: isWalletLoading } =
+    useEmployeeWallets(employeeParty);
   const { mutate: claimPayment, isPending } = useClaimPayment();
 
-  const paymentRecords = payments ?? [];
+  const paymentRecords = useMemo(() => {
+    return [...(payments ?? [])].sort((left, right) => {
+      return (
+        new Date(right.payload.issuedAt).getTime() -
+        new Date(left.payload.issuedAt).getTime()
+      );
+    });
+  }, [payments]);
+  const employeeWallet = wallets?.[0]?.payload;
+  const walletBalance = Number(employeeWallet?.balance ?? 0);
   const totalEarned = paymentRecords.reduce(
     (sum, payment) => sum + Number(payment.payload.amount),
     0,
@@ -65,7 +81,7 @@ export default function EmployeePortalPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4 md:gap-6">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5 md:gap-6">
           <Card className="text-black">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-600">
@@ -79,6 +95,28 @@ export default function EmployeePortalPage() {
               </div>
               <p className="mt-1 text-xs text-gray-500">
                 Value issued from payroll runs in {DEFAULT_PAYROLL_CURRENCY}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="text-black">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Wallet Balance
+              </CardTitle>
+              <Wallet className="h-4 w-4 text-blue-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-gray-900">
+                {isWalletLoading
+                  ? "Loading..."
+                  : formatPayrollAmount(
+                      walletBalance,
+                      employeeWallet?.currency ?? DEFAULT_PAYROLL_CURRENCY,
+                    )}
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Private wallet balance credited by payroll settlement
               </p>
             </CardContent>
           </Card>
@@ -127,10 +165,7 @@ export default function EmployeePortalPage() {
             <CardContent>
               <div className="text-lg font-bold text-gray-900">
                 {latestPayment
-                  ? `PR-${latestPayment.payload.payrollId}-${latestPayment.contractId.slice(
-                      0,
-                      6,
-                    )}`
+                  ? latestPayment.payload.receiptReference
                   : "No receipt"}
               </div>
               <p className="mt-1 text-xs text-gray-500">
@@ -189,7 +224,11 @@ export default function EmployeePortalPage() {
                                   : "bg-yellow-100 text-yellow-800"
                               }`}
                             >
-                              {payment.payload.claimed ? "Claimed" : "Pending"}
+                              {payment.payload.claimed
+                                ? "Claimed"
+                                : payment.payload.settled
+                                  ? "Settled"
+                                  : "Pending"}
                             </span>
                           </div>
                           <p className="mt-2 text-2xl font-bold text-gray-900">
@@ -238,8 +277,7 @@ export default function EmployeePortalPage() {
                             Receipt Reference
                           </p>
                           <p className="mt-1 font-mono text-sm text-gray-900">
-                            PR-{payment.payload.payrollId}-
-                            {payment.contractId.slice(0, 10)}
+                            {payment.payload.receiptReference}
                           </p>
                         </div>
                         <div>
@@ -265,7 +303,33 @@ export default function EmployeePortalPage() {
                           <p className="mt-1 text-sm font-medium text-gray-900">
                             {payment.payload.claimed
                               ? "Acknowledged on ledger"
-                              : "Awaiting employee claim"}
+                              : payment.payload.settled
+                                ? "Settled to private wallet"
+                                : "Awaiting employee claim"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs uppercase tracking-wide text-gray-500">
+                            Settled At
+                          </p>
+                          <p className="mt-1 text-sm font-medium text-gray-900">
+                            {payment.payload.settledAt
+                              ? new Date(payment.payload.settledAt).toLocaleString(
+                                  "en-US",
+                                )
+                              : "Not settled"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs uppercase tracking-wide text-gray-500">
+                            Claimed At
+                          </p>
+                          <p className="mt-1 text-sm font-medium text-gray-900">
+                            {payment.payload.claimedAt
+                              ? new Date(payment.payload.claimedAt).toLocaleString(
+                                  "en-US",
+                                )
+                              : "Not claimed yet"}
                           </p>
                         </div>
                       </div>
@@ -295,6 +359,10 @@ export default function EmployeePortalPage() {
               <li>
                 Your employer can use that reference to reconcile support
                 requests without exposing other employees.
+              </li>
+              <li>
+                The wallet balance above proves that the private payroll
+                settlement already credited your account.
               </li>
               <li>
                 Claimed receipts act as your acknowledgement of the payroll

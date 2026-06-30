@@ -19,6 +19,14 @@ export interface EmployeeProfile {
   authorizedAuditors: string[];
 }
 
+export interface EmployeeWallet {
+  employer: string;
+  employee: string;
+  balance: number;
+  currency: string;
+  lastPaidAt: string | null;
+}
+
 export interface Employer {
   employer: string;
 }
@@ -148,4 +156,15 @@ export async function getActiveEmployees(
 ): Promise<ContractRecord<EmployeeProfile>[]> {
   const employees = await getEmployeesByEmployer(employer);
   return employees.filter((emp) => emp.payload.isActive);
+}
+
+export const EMPLOYEE_WALLET_TEMPLATE =
+  getTemplateId("Payyr.Private.EmployeeRegistry", "EmployeeWallet");
+
+export async function getEmployeeWallets(
+  employee: string,
+): Promise<ContractRecord<EmployeeWallet>[]> {
+  return damlClient.queryContracts<EmployeeWallet>(EMPLOYEE_WALLET_TEMPLATE, {
+    employee,
+  });
 }

@@ -168,6 +168,9 @@ writeEnvFile(
     DAML_EMPLOYER_WALLET: walletConfig.employer,
     DAML_EMPLOYEE_WALLET: walletConfig.employee,
     DAML_AUDITOR_WALLET: walletConfig.auditor,
+    NEXT_PUBLIC_DAML_EMPLOYER_WALLET: walletConfig.employer,
+    NEXT_PUBLIC_DAML_EMPLOYEE_WALLET: walletConfig.employee,
+    NEXT_PUBLIC_DAML_AUDITOR_WALLET: walletConfig.auditor,
   }),
 );
 

@@ -211,6 +211,27 @@ What to point out:
 - verification-oriented access
 - this is scoped visibility, not public exposure
 
+### 8. Ledger Privacy Proof
+
+Open a terminal and run:
+
+```bash
+cd /Users/mac/codes/payyr-private
+./scripts/privacy-proof-curls.sh
+```
+
+What to point out:
+
+- the employer token can see employee profiles
+- the employee token cannot see payroll runs
+- the auditor token only sees payroll runs that were explicitly shared
+- the auditor token cannot see employee payment contracts
+- the employee token can see their own payment and wallet only
+
+Say:
+
+> This is the same Canton ledger with different parties. The privacy boundary is enforced by the ledger, not just by the UI.
+
 ## Closing Lines
 
 Say:

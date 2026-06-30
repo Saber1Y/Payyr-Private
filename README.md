@@ -1,252 +1,206 @@
-# Payyr Private: Confidential Stablecoin Payroll for Global Teams
+# Payyr Private
 
-Privacy-preserving stablecoin payroll system on Canton for companies, contractors, and auditors. **Employers can run payroll, employees can privately view their own payments, and auditors can verify payroll records — without exposing salaries, wallet addresses, or payroll batches to the public.**
+Private payroll coordination on Daml and Canton.
 
-## 🔐 Privacy-First Features
+Payyr Private lets an employer manage employee records, fund a private `pUSD` treasury, run payroll, share selected payroll runs with an auditor, and let each employee see only their own receipt and wallet credit.
 
-- **Confidential Salary Records**: Only employers and employees can see salary information
-- **Private Payroll Batches**: Payroll executions are selectively visible based on roles
-- **Employee-Only Payment Portal**: Employees see only their own payment information
-- **Auditor Access Control**: Employers can grant auditors access to verify payroll without public exposure
-- **Role-Based Visibility**: EMPLOYER, EMPLOYEE, AUDITOR, and ADMIN roles with strict permission boundaries
-- **Multi-Tenant Architecture**: Unlimited companies share the same smart contracts with isolated, private operations
-- **Stablecoin Integration**: USDC payments on Arc Network with confidential transaction semantics
-- **Institutional Compliance**: Prove payroll execution to auditors without exposing sensitive employee data
+## What it proves
 
-## 🔄 How It Works
+- Employee salary records stay private by default
+- Payroll runs settle from a private on-ledger treasury
+- Employees see only their own payment and wallet balance
+- Auditors see only payroll runs explicitly shared with them
+- Wrong wallets hit a clear `No access` boundary instead of seeing private data
 
-### For Employers (Self-Service Flow)
+This is not just a frontend trick. Visibility is enforced by the Daml contract parties and observers on the Canton ledger.
 
-```
-1. Connect Wallet
-   → Your wallet address is your identity
+## Current product flow
 
-2. Register as Employer
-   → Click "Register as Employer" button
-   → Calls registerAsEmployer() contract function
-   → Automatically granted HR_ROLE
-   → Cost: ~$0.08 in gas
+### Employer
 
-3. Add Your Employees
-   → Go to Employees page
-   → Click "Add Employee"
-   → Enter: Name, Wallet Address, Salary, Role
-   → Employee linked to your employer address
-   → Only YOU can manage your employees
-   → Cost: ~$0.19 per employee
+- Create or load the employer workspace
+- Add employees with private salary records in `pUSD`
+- Fund a private payroll treasury
+- Run payroll from that treasury
+- Grant or revoke auditor access per payroll run
 
-4. Deposit USDC for Payroll
-   → Go to Payroll page
-   → Approve USDC spending (one-time)
-   → Deposit desired amount
-   → Funds tracked in your employer balance
-   → Cost: ~$0.17 (approve + deposit)
+### Employee
 
-5. Execute Payroll
-   → Click "Pay All Employees"
-   → Contract pays only YOUR employees
-   → Deducts from your employer balance
-   → Instant USDC transfers to employee wallets
-   → Cost: ~$0.24 per employee
-```
+- Open `My Payments`
+- See only their own payment receipts
+- See their own private wallet credit
+- Claim a payment receipt on-ledger
 
-### Multi-Tenant Isolation
+### Auditor
 
-All employers share the same contracts but operate independently:
+- Observe only the payroll runs explicitly shared by the employer
+- Verify payroll totals and employee counts without seeing every private employee payment contract
 
-```solidity
-// Each employer has their own balance
-employerBalances[companyA] = 10_000 USDC
-employerBalances[companyB] = 5_000 USDC
+## Architecture
 
-// Each employer manages only their employees
-getEmployerEmployees(companyA) → [emp1, emp2, emp3]
-getEmployerEmployees(companyB) → [emp4, emp5]
+### Daml model
 
-// Payroll is isolated
-companyA.executePayroll() → pays emp1, emp2, emp3
-companyB.executePayroll() → pays emp4, emp5
-```
+Main contracts live in:
 
-## 🏗️ Architecture
+- `Backend/daml/Payyr/Private/EmployeeRegistry.daml`
+- `Backend/daml/Payyr/Private/PayrollManager.daml`
 
-### Smart Contracts
+Key contract responsibilities:
 
-**EmployeeRegistry** (`0x20B3dB45a351E92673112064A3F01951115eD6B7`)
+- `Employer` creates employee profiles and employee wallets
+- `EmployeeProfile` stores private employee salary data
+- `EmployeeWallet` stores private employee wallet balances
+- `EmployerBalance` stores the employer’s private treasury
+- `PayrollRun` stores a payroll batch and optional auditor visibility
+- `EmployeePayment` stores each employee’s receipt and claim state
 
-- Manages employee records
-- Links employees to employers
-- Handles employer registration
-- Tracks employer-employee relationships
+### Frontend
 
-**PayrollManager** (`0x1739715A3452BF1e336305cf8f9542d177cEa03A`)
+Frontend app lives in:
 
-- Manages USDC deposits
-- Executes payroll per employer
-- Tracks employer balances
-- Handles payroll history
+- `frontend/app/(authenticated)/dashboard/page.tsx`
+- `frontend/app/(authenticated)/employees/page.tsx`
+- `frontend/app/(authenticated)/payroll/page.tsx`
+- `frontend/app/(authenticated)/auditors/page.tsx`
+- `frontend/app/(authenticated)/employee-portal/page.tsx`
 
-### Frontend Application
+The frontend uses:
 
-```
-frontend/
-├── app/
-│   ├── dashboard/    # Platform overview & statistics
-│   ├── employees/    # Employee management with employer registration
-│   ├── payroll/      # USDC deposits & payroll execution
-│   └── settings/    # User preferences
-├── components/
-│   ├── ui/          # shadcn/ui components
-│   └── providers/  # Wallet & context providers
-└── lib/
-    └── abi/         # Smart contract ABIs
-```
+- Next.js
+- TypeScript
+- Tailwind CSS
+- shadcn/ui
+- Privy for wallet auth
+- Daml JSON API via `frontend/app/api/daml/[...path]/route.ts`
 
-## 💰 Gas Costs
+## Privacy model
 
-### Deployment (Platform Owner - One-Time)
+Privacy is enforced by the ledger, not just by route guards.
 
-| Contract             | Est. Gas  | Cost (USDC) |
-| -------------------- | --------- | ----------- |
-| EmployeeRegistry     | ~1.5M     | **$2.40**   |
-| PayrollManager       | ~2.6M     | **$4.16**   |
-| **Total Deployment** | **~4.1M** | **$6.56**   |
+At a high level:
 
-### User Operations
+- Employer pages are employer-only
+- Employee portal is employee-only
+- Auditor access is scoped per payroll run
+- Non-authorized wallets see a no-access screen and do not receive the private ledger data
 
-| Operation                      | Est. Gas | Cost (USDC) |
-| ------------------------------ | -------- | ----------- |
-| Register as Employer           | 50,000   | **$0.08**   |
-| Add Employee                   | 120,000  | **$0.19**   |
-| Update Employee                | 90,000   | **$0.14**   |
-| Deactivate Employee            | 80,000   | **$0.13**   |
-| Approve USDC (once)            | 40,000   | **$0.06**   |
-| Deposit Payroll                | 70,000   | **$0.11**   |
-| Execute Payroll (per employee) | 150,000  | **$0.24**   |
+Helpful UI access boundary files:
 
-_Assumptions: 160 gwei gas price, $0.0016 per gas unit on Arc Network_
+- `frontend/components/access/NoAccessState.tsx`
+- `frontend/lib/daml/roleMapper.ts`
+- `frontend/hooks/useDamlParty.ts`
 
-### Cost Example: Company with 5 Employees
-
-- Register as employer: **$0.08**
-- Add 5 employees: **$0.95**
-- Approve USDC (one-time): **$0.06**
-- Deposit $10,000: **$0.11**
-- Execute payroll (5 employees): **$1.20**
-- **Total: $2.40 per payroll run**
-
-## 🚀 Getting Started
+## Local development
 
 ### Prerequisites
 
-- Node.js 18+ installed
-- Foundry installed (for smart contract development)
-- Wallet with Arc Network USDC
+- Node.js 18+
+- Daml SDK available in `~/.daml/bin`
+- Java 17+
 
-### Backend (Smart Contracts)
-
-```bash
-cd Backend
-forge install
-forge build
-forge test
-
-# Deploy to Arc Network
-forge script script/DeployDirect.s.sol --rpc-url $RPC_URL --broadcast
-```
-
-### Frontend (Web Application)
+### Install frontend deps
 
 ```bash
 cd frontend
 npm install
-npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to view the application.
+### Start a fresh local Canton + JSON API stack
 
-### Quick Start for New Users
+```bash
+cd /Users/mac/codes/payyr-private
+export PATH="$HOME/.daml/bin:$PATH"
+node scripts/reset-local-daml.mjs
+```
 
-1. **Connect your wallet** - Click the connect button in the top right
-2. **Register as employer** - Go to Employees page and click "Register as Employer"
-3. **Add your team** - Add employees with their wallet addresses and salaries
-4. **Fund your payroll** - Go to Payroll page and deposit USDC
-5. **Pay your team** - Click "Pay All Employees" to execute payroll
+What this does:
 
-## 🛠️ Tech Stack
+- builds the DAR
+- starts a fresh local Canton sandbox
+- starts the Daml JSON API
+- allocates employer, employee, and auditor parties
+- rewrites `frontend/.env.local`
 
-### Frontend
+### Start the frontend
 
-- **Next.js 14** - React framework with app router
-- **TypeScript** - Type-safe development
-- **TailwindCSS** - Utility-first styling
-- **shadcn/ui** - Modern component library
-- **Privy** - Embedded wallet authentication
-- **Wagmi** - React hooks for Ethereum
-- **Lucide React** - Beautiful icons
+```bash
+cd /Users/mac/codes/payyr-private/frontend
+npm run dev -- --hostname 127.0.0.1 --port 3000
+```
 
-### Backend
+Open:
 
-- **Foundry** - Smart contract development framework
-- **Solidity** - Smart contract programming language
-- **OpenZeppelin** - Security libraries (AccessControl, ReentrancyGuard, Pausable)
-- **Arc Network** - Layer 2 blockchain for fast, cheap transactions
+- `http://127.0.0.1:3000`
 
-## 📊 Pages & Features
+## Local test wallets
 
-### Dashboard
+- Employer wallet: `0x3F5b96A494061F7338Da529e3047809Ac6a7FB84`
+- Employee wallet: `0x3Aa77077a0c8eddc7cCbb28Eff31605b7e6A79EA`
+- Auditor wallet: `0x06c2D94CD4b3AAF10C077C341f2f1FB0D203348c`
 
-- Platform-wide statistics
-- Recent payroll runs
-- Total contract balance (admin view)
+These wallets are mapped to local Daml parties by the reset script.
 
-### Employees
+## Demo flow
 
-- **Employer Registration** - Self-service onboarding
-- **Employee List** - View your team members
-- **Add Employee** - Add new team members
-- **Edit Employee** - Update employee details
-- **Activate/Deactivate** - Manage employee status
+### UI walkthrough
 
-### Payroll
+1. Log in as employer
+2. Add an employee on `/employees`
+3. Fund treasury on `/payroll`
+4. Run payroll on `/payroll`
+5. Grant auditor access on `/auditors`
+6. Log in as employee and inspect `/employee-portal`
+7. Log in as a wrong wallet and show the `No access` boundary
 
-- **Deposit USDC** - Fund your payroll account
-- **View Balance** - Check your available funds
-- **Execute Payroll** - Pay all active employees
-- **Payroll History** - View past runs
+### Recording guide
 
-### Settings
+Use:
 
-- Company information
-- Payment preferences
-- Wallet management
+- `RECORDING_SCRIPT.md`
 
-## 🔐 Security Features
+### Ledger privacy proof
 
-- **Wallet-based authentication** - Secure login via Privy
-- **Role-based access control** - Employers only manage their employees
-- **Isolated employer balances** - Funds separated per employer
-- **ReentrancyGuard** - Prevent reentrancy attacks
-- **Pausable** - Emergency pause functionality
-- **Audit-ready code** - Clean, well-documented contracts
+Run:
 
-## 🎯 Why This Is Great for Arc Rewards
+```bash
+cd /Users/mac/codes/payyr-private
+./scripts/privacy-proof-curls.sh
+```
 
-1. **Multi-Tenant Design** - Scalable to unlimited companies
-2. **Self-Service** - No manual onboarding required
-3. **Gas Efficient** - Shared contracts = lower costs for users
-4. **Real Utility** - Actual payroll management use case
-5. **Production Ready** - Complete frontend + backend
-6. **Low Barrier** - $0.08 to become an employer
+This script proves, on the live local ledger, that:
 
-## 📄 License
+- employer can see employee profiles
+- employee cannot see employer payroll runs
+- auditor can see only shared payroll runs
+- auditor cannot see employee payment contracts
+- employee can see only their own payment and wallet
 
-This project is open source and available under the [MIT License](LICENSE).
+## Useful scripts
 
-## 🤝 Contributing
+- `scripts/reset-local-daml.mjs` — reset and start the local Daml stack
+- `scripts/privacy-proof-curls.sh` — live ledger privacy proof for demos
+- `RECORDING_SCRIPT.md` — recording walkthrough
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+## Repository layout
 
-## 📞 Support
+```text
+Backend/
+  daml/
+    Payyr/Private/
+frontend/
+  app/
+  components/
+  hooks/
+  lib/
+scripts/
+```
 
-For support and questions, please open an issue in this repository.
+## Notes
+
+- `pUSD` is a mock private payroll unit for the MVP
+- Current settlement is Daml-native and private within the app’s ledger model
+- This repo also contains older Solidity artifacts, but the active product flow described here is the Canton/Daml flow
+
+## License
+
+MIT

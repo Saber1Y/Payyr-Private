@@ -72,6 +72,7 @@ assertWallet("employee", walletConfig.employee);
 assertWallet("auditor", walletConfig.auditor);
 
 stopManagedStack();
+stopStaleDamlListeners([6868]);
 
 ensureDamlAvailable();
 runCommand("daml", ["build"], { cwd: backendDamlDir });
@@ -287,22 +288,19 @@ function inspectPackageId() {
 }
 
 function detectRuntimeMode() {
-  const startHelp = spawnSync("daml", ["start", "--help"], {
-    cwd: backendDamlDir,
-    encoding: "utf8",
-    env: withDamlPath(process.env),
-  });
+  const requestedRuntime = process.env.PAYYR_DAML_RUNTIME;
 
-  return startHelp.status === 0 ? "start" : "split";
+  if (requestedRuntime === "start" || requestedRuntime === "split") {
+    return requestedRuntime;
+  }
+
+  return "split";
 }
 
 async function startSplitRuntime({ sandboxPort, jsonApiPort }) {
   const logDir = fs.mkdtempSync(path.join(os.tmpdir(), "payyr-private-daml-"));
   const sandboxLog = path.join(logDir, "sandbox.log");
-  const adminApiPort = await getFreePort();
-  const sequencerPublicPort = await getFreePort();
-  const sequencerAdminPort = await getFreePort();
-  const mediatorAdminPort = await getFreePort();
+  const jsonApiLog = path.join(logDir, "json-api.log");
 
   const sandboxPid = spawnDetached(
     "daml",
@@ -310,16 +308,6 @@ async function startSplitRuntime({ sandboxPort, jsonApiPort }) {
       "sandbox",
       "--port",
       String(sandboxPort),
-      "--json-api-port",
-      String(jsonApiPort),
-      "--admin-api-port",
-      String(adminApiPort),
-      "--sequencer-public-port",
-      String(sequencerPublicPort),
-      "--sequencer-admin-port",
-      String(sequencerAdminPort),
-      "--mediator-admin-port",
-      String(mediatorAdminPort),
       "--wall-clock-time",
       "--dar",
       darPath,
@@ -330,17 +318,30 @@ async function startSplitRuntime({ sandboxPort, jsonApiPort }) {
 
   await waitForTcpPort(sandboxPort, 60000, sandboxLog);
 
+  const jsonApiPid = spawnDetached(
+    "daml",
+    [
+      "json-api",
+      "--ledger-host",
+      "127.0.0.1",
+      "--ledger-port",
+      String(sandboxPort),
+      "--http-port",
+      String(jsonApiPort),
+      "--allow-insecure-tokens",
+    ],
+    backendDamlDir,
+    jsonApiLog,
+  );
+
   return {
     sandboxPort,
     jsonApiPort,
-    pids: [sandboxPid],
+    pids: [sandboxPid, jsonApiPid],
     files: {
       logDir,
       sandboxLog,
-      adminApiPort,
-      sequencerPublicPort,
-      sequencerAdminPort,
-      mediatorAdminPort,
+      jsonApiLog,
     },
   };
 }
@@ -744,6 +745,48 @@ function stopManagedStack() {
     }
   } finally {
     fs.rmSync(statePath, { force: true });
+  }
+}
+
+function stopStaleDamlListeners(ports) {
+  for (const port of ports) {
+    const lsofResult = spawnSync(
+      "lsof",
+      ["-nP", `-iTCP:${port}`, "-sTCP:LISTEN", "-t"],
+      {
+        cwd: repoRoot,
+        encoding: "utf8",
+      },
+    );
+
+    if (lsofResult.status !== 0 || !lsofResult.stdout.trim()) {
+      continue;
+    }
+
+    const pids = lsofResult.stdout
+      .split(/\r?\n/)
+      .map((value) => value.trim())
+      .filter(Boolean);
+
+    for (const pidValue of pids) {
+      const commandResult = spawnSync("ps", ["-p", pidValue, "-o", "command="], {
+        cwd: repoRoot,
+        encoding: "utf8",
+      });
+      const commandLine = commandResult.stdout.trim().toLowerCase();
+
+      if (
+        !commandLine.includes("daml")
+        && !commandLine.includes("canton")
+        && !commandLine.includes("java")
+      ) {
+        continue;
+      }
+
+      try {
+        process.kill(Number(pidValue), "SIGTERM");
+      } catch {}
+    }
   }
 }
 

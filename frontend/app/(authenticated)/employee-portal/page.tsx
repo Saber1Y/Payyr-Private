@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 import { useEffect } from "react";
 import { useMemo } from "react";
 import { usePrivy } from "@privy-io/react-auth";
+import { NoAccessState } from "@/components/access/NoAccessState";
 import {
   CheckCircle2,
   Clock3,
@@ -27,7 +28,7 @@ import { DEFAULT_PAYROLL_CURRENCY, formatPayrollAmount } from "@/lib/payrollCurr
 
 export default function EmployeePortalPage() {
   const { authenticated } = usePrivy();
-  const { damlParty: employeeParty } = useDamlParty();
+  const { damlParty: employeeParty, walletRole } = useDamlParty();
 
   useEffect(() => {
     damlClient.setParty(employeeParty);
@@ -66,6 +67,12 @@ export default function EmployeePortalPage() {
 
   if (!authenticated) {
     return <div>Please log in to view your payment portal.</div>;
+  }
+
+  if (walletRole !== "employee") {
+    return (
+      <NoAccessState message="This page is only available to the employee who received the payment. This wallet is not authorized to view private receipts or balances." />
+    );
   }
 
   return (

@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 
 import { useEffect, useMemo, useState } from "react";
 import { usePrivy } from "@privy-io/react-auth";
+import { NoAccessState } from "@/components/access/NoAccessState";
 import {
   AlertCircle,
   BadgeCheck,
@@ -56,7 +57,7 @@ interface PayrollVerificationRow {
 
 export default function AuditorsPage() {
   const { authenticated } = usePrivy();
-  const { damlParty: employerParty } = useDamlParty();
+  const { damlParty: employerParty, walletRole } = useDamlParty();
 
   const [newAuditorParty, setNewAuditorParty] = useState("");
   const [selectedPayrollId, setSelectedPayrollId] = useState("");
@@ -180,6 +181,12 @@ export default function AuditorsPage() {
 
   if (!authenticated) {
     return <div>Please log in to manage auditor access.</div>;
+  }
+
+  if (walletRole !== "employer") {
+    return (
+      <NoAccessState message="This auditor access page is only available to the employer. This wallet is not authorized to manage or view private payroll sharing." />
+    );
   }
 
   return (

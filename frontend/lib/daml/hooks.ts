@@ -129,6 +129,14 @@ export function usePayrollManagerContracts(admin: string) {
   });
 }
 
+export function useEmployerBalances(employer: string) {
+  return useQuery({
+    queryKey: ["employerBalances", employer],
+    queryFn: () => payrollManager.getEmployerBalances(employer),
+    enabled: !!employer,
+  });
+}
+
 // Hook to create a payroll run
 export function useCreatePayrollRun() {
   const queryClient = useQueryClient();
@@ -148,6 +156,9 @@ export function useCreatePayrollRun() {
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payrolls"] });
+      queryClient.invalidateQueries({ queryKey: ["payments"] });
+      queryClient.invalidateQueries({ queryKey: ["employeeWallets"] });
+      queryClient.invalidateQueries({ queryKey: ["employerBalances"] });
     },
   });
 }
@@ -190,6 +201,27 @@ export function useClaimPayment() {
   });
 }
 
+export function useFundEmployerBalance() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: {
+      contractId: string;
+      employer: string;
+      amount: number;
+    }) =>
+      payrollManager.withdrawPayroll(
+        data.contractId,
+        data.employer,
+        data.amount,
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["employerBalances"] });
+      queryClient.invalidateQueries({ queryKey: ["payrolls"] });
+    },
+  });
+}
+
 // Hook to query all employee payments
 export function useEmployeePayments(employee: string) {
   return useQuery({
@@ -204,6 +236,14 @@ export function useUnclaimedPayments(employee: string) {
   return useQuery({
     queryKey: ["unclaimedPayments", employee],
     queryFn: () => payrollManager.getUnclaimedPayments(employee),
+    enabled: !!employee,
+  });
+}
+
+export function useEmployeeWallets(employee: string) {
+  return useQuery({
+    queryKey: ["employeeWallets", employee],
+    queryFn: () => employeeRegistry.getEmployeeWallets(employee),
     enabled: !!employee,
   });
 }

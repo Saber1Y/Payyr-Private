@@ -239,6 +239,16 @@ Say:
 > Payyr Private shows how payroll can be coordinated privately on Canton.  
 > The employer funds and settles payroll privately in pUSD, employees get private wallet credits and receipts, and auditors receive selective verification access — all without exposing payroll data publicly.
 
+## Deployment Disclosure
+
+If you want to explain the current hackathon deployment setup during the video, use:
+
+- `scripts/VERCEL_CLOUDFLARE_DEMO_SCRIPT.md`
+
+Short version:
+
+> The frontend is deployed on Vercel, and for the hackathon MVP the Daml backend is exposed from our local Canton environment through Cloudflare Tunnel. We used that setup so we could demonstrate the real end-to-end flow without adding VPS cost during the hackathon window.
+
 ## If Something Looks Off Before Recording
 
 Restart the local stack:

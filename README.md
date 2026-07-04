@@ -175,10 +175,29 @@ This script proves, on the live local ledger, that:
 - auditor cannot see employee payment contracts
 - employee can see only their own payment and wallet
 
+## Hackathon deployment note
+
+For the hackathon demo, the frontend can be deployed on Vercel while the Daml backend is exposed from a local Canton/Daml environment through Cloudflare Tunnel.
+
+This choice is a budget and time tradeoff for the MVP:
+
+- frontend is hosted publicly on Vercel
+- backend remains a real Canton/Daml stack
+- Cloudflare Tunnel exposes the local Daml JSON API for demo access
+- the full demo flow is captured in the recording for reliability
+
+What this means:
+
+- the architecture is real and the privacy model is real
+- the deployed frontend works against a live Daml backend during the demo
+- the backend is not yet on an always-on VPS
+- the next deployment upgrade would be moving the backend to a dedicated server
+
 ## Useful scripts
 
 - `scripts/reset-local-daml.mjs` — reset and start the local Daml stack
 - `scripts/privacy-proof-curls.sh` — live ledger privacy proof for demos
+- `scripts/VERCEL_CLOUDFLARE_DEMO_SCRIPT.md` — short script for explaining the demo deployment setup
 - `RECORDING_SCRIPT.md` — recording walkthrough
 
 ## Repository layout

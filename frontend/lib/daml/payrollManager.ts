@@ -195,6 +195,12 @@ export async function getPayrollsByEmployer(
   });
 }
 
+export async function getVisiblePayrolls(): Promise<
+  ContractRecord<PayrollRun>[]
+> {
+  return damlClient.queryContracts<PayrollRun>(PAYROLL_RUN_TEMPLATE, {});
+}
+
 // Query employee payments
 export async function getEmployeePayments(
   employee: string,

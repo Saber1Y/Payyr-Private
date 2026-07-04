@@ -120,6 +120,14 @@ export function usePayrollsByEmployer(employer: string) {
   });
 }
 
+export function useVisiblePayrolls(enabled = true) {
+  return useQuery({
+    queryKey: ["visiblePayrolls"],
+    queryFn: () => payrollManager.getVisiblePayrolls(),
+    enabled,
+  });
+}
+
 // Hook to query payroll manager contracts
 export function usePayrollManagerContracts(admin: string) {
   return useQuery({

@@ -22,6 +22,7 @@ import {
   useGrantPayrollAuditorAccess,
   usePayrollsByEmployer,
   useRevokePayrollAuditorAccess,
+  useVisiblePayrolls,
 } from "@/lib/daml/hooks";
 import { damlClient } from "@/lib/daml/client";
 import { resolveDamlParty } from "@/lib/daml/partyMapper";
@@ -57,20 +58,54 @@ interface PayrollVerificationRow {
 
 export default function AuditorsPage() {
   const { authenticated } = usePrivy();
-  const { damlParty: employerParty, walletRole } = useDamlParty();
+  const { damlParty: viewerParty, walletRole } = useDamlParty();
+  const isEmployerView = walletRole === "employer";
+  const isAuditorView = walletRole === "auditor";
 
   const [newAuditorParty, setNewAuditorParty] = useState("");
   const [selectedPayrollId, setSelectedPayrollId] = useState("");
 
   useEffect(() => {
-    damlClient.setParty(employerParty);
-  }, [employerParty]);
+    damlClient.setParty(viewerParty);
+  }, [viewerParty]);
 
-  const {
-    data: payrolls,
-    isLoading,
-    error,
-  } = usePayrollsByEmployer(employerParty);
+  const employerPayrollQuery = usePayrollsByEmployer(
+    isEmployerView ? viewerParty : "",
+  );
+  const visiblePayrollQuery = useVisiblePayrolls(
+    isAuditorView && !!viewerParty,
+  );
+
+  const payrolls = useMemo(() => {
+    if (isEmployerView) {
+      return employerPayrollQuery.data ?? [];
+    }
+
+    if (isAuditorView) {
+      return (visiblePayrollQuery.data ?? []).filter((payroll) =>
+        payroll.payload.authorizedAuditors.includes(viewerParty),
+      );
+    }
+
+    return [];
+  }, [
+    employerPayrollQuery.data,
+    isAuditorView,
+    isEmployerView,
+    viewerParty,
+    visiblePayrollQuery.data,
+  ]);
+
+  const isLoading = isEmployerView
+    ? employerPayrollQuery.isLoading
+    : isAuditorView
+      ? visiblePayrollQuery.isLoading
+      : false;
+  const error = isEmployerView
+    ? employerPayrollQuery.error
+    : isAuditorView
+      ? visiblePayrollQuery.error
+      : null;
 
   const { mutate: grantAuditorAccess, isPending: isGrantPending } =
     useGrantPayrollAuditorAccess();
@@ -78,6 +113,20 @@ export default function AuditorsPage() {
     useRevokePayrollAuditorAccess();
 
   const accessRecords = useMemo<AuditorAccessRecord[]>(() => {
+    if (isAuditorView) {
+      return (payrolls ?? []).map((payroll) => ({
+        contractId: payroll.contractId,
+        payrollId: Number(payroll.payload.payrollId),
+        auditor: viewerParty,
+        grantedAt: payroll.payload.timestamp,
+        totalAmount: Number(payroll.payload.totalAmount),
+        paymentCurrency: payroll.payload.paymentCurrency,
+        employeeCount: Number(payroll.payload.employeeCount),
+        isCompleted: payroll.payload.isCompleted,
+        isPublic: payroll.payload.isPublic,
+      }));
+    }
+
     return (payrolls ?? []).flatMap((payroll) =>
       payroll.payload.authorizedAuditors.map((auditor) => ({
         contractId: payroll.contractId,
@@ -91,7 +140,7 @@ export default function AuditorsPage() {
         isPublic: payroll.payload.isPublic,
       })),
     );
-  }, [payrolls]);
+  }, [isAuditorView, payrolls, viewerParty]);
 
   const payrollVerificationRows = useMemo<PayrollVerificationRow[]>(() => {
     return [...(payrolls ?? [])]
@@ -105,10 +154,14 @@ export default function AuditorsPage() {
         employeeCount: Number(payroll.payload.employeeCount),
         isCompleted: payroll.payload.isCompleted,
         isPublic: payroll.payload.isPublic,
-        auditors: payroll.payload.authorizedAuditors,
+        auditors: isEmployerView
+          ? payroll.payload.authorizedAuditors
+          : payroll.payload.authorizedAuditors.filter(
+              (auditor) => auditor === viewerParty,
+            ),
       }))
       .sort((left, right) => right.payrollId - left.payrollId);
-  }, [payrolls]);
+  }, [isEmployerView, payrolls, viewerParty]);
 
   const uniqueAuditors = new Set(accessRecords.map((record) => record.auditor));
   const payrollsWithAuditors = new Set(
@@ -126,6 +179,69 @@ export default function AuditorsPage() {
     0,
   );
   const latestSharedRun = sharedPayrollRows[0];
+  const summaryCards = isEmployerView
+    ? [
+        {
+          title: "Active Permissions",
+          value: String(accessRecords.length),
+          description: "Auditor grants currently visible on ledger",
+          icon: ShieldCheck,
+          iconClassName: "text-indigo-600",
+        },
+        {
+          title: "Unique Auditors",
+          value: String(uniqueAuditors.size),
+          description: "Distinct parties with payroll access",
+          icon: Users,
+          iconClassName: "text-blue-600",
+        },
+        {
+          title: "Payrolls Shared",
+          value: String(payrollsWithAuditors.size),
+          description: "Payroll runs with explicit auditor access",
+          icon: FileText,
+          iconClassName: "text-emerald-600",
+        },
+        {
+          title: "Verified Value",
+          value: formatPayrollAmount(totalSharedValue),
+          description: `Total ${DEFAULT_PAYROLL_CURRENCY} value shared with auditors`,
+          icon: Wallet,
+          iconClassName: "text-green-600",
+        },
+      ]
+    : [
+        {
+          title: "Payrolls Shared",
+          value: String(sharedPayrollRows.length),
+          description: "Payroll runs this auditor can verify",
+          icon: ShieldCheck,
+          iconClassName: "text-indigo-600",
+        },
+        {
+          title: "Employees Covered",
+          value: String(coveredEmployees),
+          description: "Employee entries visible inside shared payrolls",
+          icon: Users,
+          iconClassName: "text-blue-600",
+        },
+        {
+          title: "Verified Value",
+          value: formatPayrollAmount(totalSharedValue),
+          description: `Total ${DEFAULT_PAYROLL_CURRENCY} amount shared for verification`,
+          icon: Wallet,
+          iconClassName: "text-green-600",
+        },
+        {
+          title: "Latest Shared Run",
+          value: latestSharedRun ? `#${latestSharedRun.payrollId}` : "None",
+          description: latestSharedRun
+            ? new Date(latestSharedRun.timestamp).toLocaleString()
+            : "No payroll runs shared yet",
+          icon: FileText,
+          iconClassName: "text-emerald-600",
+        },
+      ];
 
   const handleGrantAccess = () => {
     if (!newAuditorParty || !selectedPayrollId) {
@@ -183,9 +299,9 @@ export default function AuditorsPage() {
     return <div>Please log in to manage auditor access.</div>;
   }
 
-  if (walletRole !== "employer") {
+  if (!isEmployerView && !isAuditorView) {
     return (
-      <NoAccessState message="This auditor access page is only available to the employer. This wallet is not authorized to manage or view private payroll sharing." />
+      <NoAccessState message="This wallet is not authorized to manage auditor access or view shared payroll verification." />
     );
   }
 
@@ -194,162 +310,150 @@ export default function AuditorsPage() {
       <div className="space-y-6 md:space-y-8">
         <div>
           <h1 className="text-2xl font-bold text-white md:text-3xl">
-            Auditor Access
+            {isEmployerView ? "Auditor Access" : "Auditor Verification"}
           </h1>
           <p className="mt-2 text-sm text-gray-300 md:text-base">
-            Grant, review, and revoke scoped auditor visibility for private
-            {` ${DEFAULT_PAYROLL_CURRENCY} `}payroll runs on the Daml ledger.
+            {isEmployerView
+              ? `Grant, review, and revoke scoped auditor visibility for private ${DEFAULT_PAYROLL_CURRENCY} payroll runs on the Daml ledger.`
+              : `Review only the payroll runs explicitly shared with your auditor party. Private payroll data stays hidden until access is granted.`}
           </p>
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4 md:gap-6">
-          <Card className="text-black">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Active Permissions
-              </CardTitle>
-              <ShieldCheck className="h-4 w-4 text-indigo-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-gray-900">
-                {accessRecords.length}
-              </div>
-              <p className="mt-1 text-xs text-gray-500">
-                Auditor grants currently visible on ledger
-              </p>
-            </CardContent>
-          </Card>
+          {summaryCards.map((card) => {
+            const Icon = card.icon;
 
-          <Card className="text-black">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Unique Auditors
-              </CardTitle>
-              <Users className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-gray-900">
-                {uniqueAuditors.size}
-              </div>
-              <p className="mt-1 text-xs text-gray-500">
-                Distinct parties with payroll access
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="text-black">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Payrolls Shared
-              </CardTitle>
-              <FileText className="h-4 w-4 text-emerald-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-gray-900">
-                {payrollsWithAuditors.size}
-              </div>
-              <p className="mt-1 text-xs text-gray-500">
-                Payroll runs with explicit auditor access
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="text-black">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Verified Value
-              </CardTitle>
-              <Wallet className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-gray-900">
-                {formatPayrollAmount(totalSharedValue)}
-              </div>
-              <p className="mt-1 text-xs text-gray-500">
-                Total {DEFAULT_PAYROLL_CURRENCY} value shared with auditors
-              </p>
-            </CardContent>
-          </Card>
+            return (
+              <Card key={card.title} className="text-black">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-600">
+                    {card.title}
+                  </CardTitle>
+                  <Icon className={`h-4 w-4 ${card.iconClassName}`} />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-gray-900">
+                    {card.value}
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {card.description}
+                  </p>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] md:gap-6">
-          <Card className="text-black">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold text-black">
-                Grant Auditor Access
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">
-                  Payroll Run ID
-                </label>
-                <Input
-                  type="number"
-                  placeholder="Enter payroll run ID"
-                  value={selectedPayrollId}
-                  onChange={(event) => setSelectedPayrollId(event.target.value)}
-                />
-              </div>
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">
-                  Auditor Party
-                </label>
-                <Input
-                  type="text"
-                  placeholder="auditor::party"
-                  value={newAuditorParty}
-                  onChange={(event) => setNewAuditorParty(event.target.value)}
-                />
-              </div>
-              <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">
-                Use this to share a specific payroll run with an auditor party
-                without exposing every employee payment contract beyond the
-                authorized verification scope.
-              </div>
-              {payrollVerificationRows.length > 0 ? (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-gray-700">
-                    Recent payroll runs
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {payrollVerificationRows.slice(0, 6).map((payroll) => (
-                      <Button
-                        key={payroll.contractId}
-                        type="button"
-                        variant="outline"
-                        className="text-black"
-                        onClick={() =>
-                          setSelectedPayrollId(String(payroll.payrollId))
-                        }
-                      >
-                        #{payroll.payrollId}
-                      </Button>
-                    ))}
-                  </div>
+          {isEmployerView ? (
+            <Card className="text-black">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-black">
+                  Grant Auditor Access
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">
+                    Payroll Run ID
+                  </label>
+                  <Input
+                    type="number"
+                    placeholder="Enter payroll run ID"
+                    value={selectedPayrollId}
+                    onChange={(event) =>
+                      setSelectedPayrollId(event.target.value)
+                    }
+                  />
                 </div>
-              ) : null}
-              <Button
-                onClick={handleGrantAccess}
-                disabled={isMutating || isLoading}
-                className="w-full gap-2"
-              >
-                {isGrantPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Granting Access...
-                  </>
-                ) : (
-                  "Grant Auditor Access"
-                )}
-              </Button>
-            </CardContent>
-          </Card>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">
+                    Auditor Party
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="auditor::party"
+                    value={newAuditorParty}
+                    onChange={(event) => setNewAuditorParty(event.target.value)}
+                  />
+                </div>
+                <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">
+                  Use this to share a specific payroll run with an auditor
+                  party without exposing every employee payment contract beyond
+                  the authorized verification scope.
+                </div>
+                {payrollVerificationRows.length > 0 ? (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-gray-700">
+                      Recent payroll runs
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {payrollVerificationRows.slice(0, 6).map((payroll) => (
+                        <Button
+                          key={payroll.contractId}
+                          type="button"
+                          variant="outline"
+                          className="text-black"
+                          onClick={() =>
+                            setSelectedPayrollId(String(payroll.payrollId))
+                          }
+                        >
+                          #{payroll.payrollId}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                <Button
+                  onClick={handleGrantAccess}
+                  disabled={isMutating || isLoading}
+                  className="w-full gap-2"
+                >
+                  {isGrantPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Granting Access...
+                    </>
+                  ) : (
+                    "Grant Auditor Access"
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="text-black">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-black">
+                  Your Auditor Scope
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4 text-sm text-indigo-950">
+                  You are viewing the ledger as an auditor. Only payroll runs
+                  explicitly shared with your mapped auditor party appear here.
+                </div>
+                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                  <p className="text-sm font-medium text-gray-700">
+                    Auditor party
+                  </p>
+                  <p className="mt-2 break-all font-mono text-sm text-gray-900">
+                    {viewerParty}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">
+                  This is a read-only verification workspace. The employer must
+                  grant or revoke access from their own view.
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           <Card className="text-black">
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-black">
-                Verification Coverage
+                {isEmployerView
+                  ? "Verification Coverage"
+                  : "Shared Payroll Verification"}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -365,9 +469,15 @@ export default function AuditorsPage() {
                 </div>
               ) : payrollVerificationRows.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-10 text-center">
-                  <p className="text-gray-500">No payroll runs available yet.</p>
+                  <p className="text-gray-500">
+                    {isEmployerView
+                      ? "No payroll runs available yet."
+                      : "No payroll runs have been shared with this auditor party yet."}
+                  </p>
                   <p className="mt-1 text-sm text-gray-400">
-                    Run payroll first, then authorize audit access per run.
+                    {isEmployerView
+                      ? "Run payroll first, then authorize audit access per run."
+                      : "Ask the employer to grant access to a payroll run before returning here."}
                   </p>
                 </div>
               ) : (
@@ -376,12 +486,16 @@ export default function AuditorsPage() {
                     <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                       <div>
                         <p className="text-sm font-medium text-emerald-900">
-                          Audit-ready payroll coverage
+                          {isEmployerView
+                            ? "Audit-ready payroll coverage"
+                            : "Shared verification coverage"}
                         </p>
                         <p className="mt-1 text-sm text-emerald-800">
                           {sharedPayrollRows.length} payroll runs covering{" "}
-                          {coveredEmployees} employee entries are currently
-                          shared with auditors.
+                          {coveredEmployees} employee entries are currently{" "}
+                          {isEmployerView
+                            ? "shared with auditors."
+                            : "visible to this auditor party."}
                         </p>
                       </div>
                       {latestSharedRun ? (
@@ -416,7 +530,9 @@ export default function AuditorsPage() {
                                 }`}
                               >
                                 {payroll.auditors.length > 0
-                                  ? "Shared with auditors"
+                                  ? isEmployerView
+                                    ? "Shared with auditors"
+                                    : "Shared to you"
                                   : "Private only"}
                               </span>
                               <span
@@ -456,6 +572,23 @@ export default function AuditorsPage() {
                             This payroll run is still private to the employer
                             and authorized employee parties. Grant access above
                             when you need audit verification.
+                          </div>
+                        ) : !isEmployerView ? (
+                          <div className="space-y-3 rounded-lg border border-green-100 bg-white p-4">
+                            <div className="flex items-center gap-2 text-sm font-medium text-green-900">
+                              <BadgeCheck className="h-4 w-4" />
+                              Shared with your auditor party
+                            </div>
+                            <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                              <p className="break-all font-mono text-sm text-gray-900">
+                                {viewerParty}
+                              </p>
+                              <p className="mt-1 text-xs text-gray-500">
+                                This payroll run is visible to you for
+                                verification because the employer explicitly
+                                granted access.
+                              </p>
+                            </div>
                           </div>
                         ) : (
                           <div className="space-y-3 rounded-lg border border-green-100 bg-white p-4">
@@ -525,18 +658,41 @@ export default function AuditorsPage() {
           </CardHeader>
           <CardContent>
             <ul className="space-y-1 text-sm text-blue-800">
-              <li>
-                Auditors only observe payroll runs you explicitly authorize.
-              </li>
-              <li>
-                Verification scope is tied to a payroll run, its employee count,
-                and its {DEFAULT_PAYROLL_CURRENCY} total.
-              </li>
-              <li>
-                Employee payment contracts stay visible to the employer and
-                employee.
-              </li>
-              <li>You can revoke payroll-run access at any time.</li>
+              {isEmployerView ? (
+                <>
+                  <li>
+                    Auditors only observe payroll runs you explicitly
+                    authorize.
+                  </li>
+                  <li>
+                    Verification scope is tied to a payroll run, its employee
+                    count, and its {DEFAULT_PAYROLL_CURRENCY} total.
+                  </li>
+                  <li>
+                    Employee payment contracts stay visible to the employer and
+                    employee.
+                  </li>
+                  <li>You can revoke payroll-run access at any time.</li>
+                </>
+              ) : (
+                <>
+                  <li>
+                    You only see payroll runs that were explicitly shared with
+                    your auditor party.
+                  </li>
+                  <li>
+                    Unshared payroll runs and unrelated employee payment
+                    contracts stay hidden from this view.
+                  </li>
+                  <li>
+                    Your verification scope is limited to the payroll run,
+                    employee count, and {DEFAULT_PAYROLL_CURRENCY} total.
+                  </li>
+                  <li>
+                    The employer controls access and can revoke it at any time.
+                  </li>
+                </>
+              )}
             </ul>
           </CardContent>
         </Card>

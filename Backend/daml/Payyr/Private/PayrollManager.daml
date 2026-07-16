@@ -2,17 +2,7 @@ module Payyr.Private.PayrollManager where
 
 import DA.List (filter)
 import Payyr.Private.EmployeeRegistry (EmployeeProfile(..), EmployeeWallet(..))
-
-containsParty : Party -> [Party] -> Bool
-containsParty _ [] = False
-containsParty x (y :: ys) = x == y || containsParty x ys
-
-nubParties : [Party] -> [Party]
-nubParties [] = []
-nubParties (x :: xs) = if containsParty x xs then nubParties xs else x :: nubParties xs
-
-privatePayrollCurrency : Text
-privatePayrollCurrency = "pUSD"
+import Payyr.Private.Utilities (containsParty, nubParties, privatePayrollCurrency)
 
 sumSalary : [EmployeeProfile] -> Decimal
 sumSalary = foldr (\ep acc -> ep.salary + acc) 0.0

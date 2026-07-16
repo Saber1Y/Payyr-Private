@@ -2,7 +2,7 @@
 
 export const dynamic = "force-dynamic";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { NoAccessState } from "@/components/access/NoAccessState";
 import {
@@ -24,13 +24,13 @@ import {
   useRevokePayrollAuditorAccess,
   useVisiblePayrolls,
 } from "@/lib/daml/hooks";
-import { damlClient } from "@/lib/daml/client";
 import { resolveDamlParty } from "@/lib/daml/partyMapper";
 import { useDamlParty } from "@/hooks/useDamlParty";
 import {
   DEFAULT_PAYROLL_CURRENCY,
   formatPayrollAmount,
 } from "@/lib/payrollCurrency";
+import { useAlert, useConfirm } from "@/hooks/useDialogs";
 
 interface AuditorAccessRecord {
   contractId: string;
@@ -61,13 +61,11 @@ export default function AuditorsPage() {
   const { damlParty: viewerParty, walletRole } = useDamlParty();
   const isEmployerView = walletRole === "employer";
   const isAuditorView = walletRole === "auditor";
+  const { showAlert, AlertDialogElement } = useAlert();
+  const { showConfirm, ConfirmDialogElement } = useConfirm();
 
   const [newAuditorParty, setNewAuditorParty] = useState("");
   const [selectedPayrollId, setSelectedPayrollId] = useState("");
-
-  useEffect(() => {
-    damlClient.setParty(viewerParty);
-  }, [viewerParty]);
 
   const employerPayrollQuery = usePayrollsByEmployer(
     isEmployerView ? viewerParty : "",
@@ -245,7 +243,7 @@ export default function AuditorsPage() {
 
   const handleGrantAccess = () => {
     if (!newAuditorParty || !selectedPayrollId) {
-      alert("Please provide auditor party and payroll ID");
+      showAlert("Please provide auditor party and payroll ID");
       return;
     }
 
@@ -254,7 +252,7 @@ export default function AuditorsPage() {
     );
 
     if (!payroll) {
-      alert("Payroll run not found");
+      showAlert("Payroll run not found");
       return;
     }
 
@@ -262,6 +260,7 @@ export default function AuditorsPage() {
       {
         contractId: payroll.contractId,
         auditor: resolveDamlParty(newAuditorParty),
+        party: viewerParty,
       },
       {
         onSuccess: () => {
@@ -269,14 +268,17 @@ export default function AuditorsPage() {
           setSelectedPayrollId("");
         },
         onError: (grantError) => {
-          alert(`Failed to grant auditor access: ${grantError.message}`);
+          showAlert(`Failed to grant auditor access: ${grantError.message}`);
         },
       },
     );
   };
 
-  const handleRevokeAccess = (contractId: string, auditor: string) => {
-    if (!window.confirm("Are you sure you want to revoke auditor access?")) {
+  const handleRevokeAccess = async (contractId: string, auditor: string) => {
+    const confirmed = await showConfirm(
+      "Are you sure you want to revoke auditor access?",
+    );
+    if (!confirmed) {
       return;
     }
 
@@ -284,10 +286,11 @@ export default function AuditorsPage() {
       {
         contractId,
         auditor,
+        party: viewerParty,
       },
       {
         onError: (revokeError) => {
-          alert(`Failed to revoke auditor access: ${revokeError.message}`);
+          showAlert(`Failed to revoke auditor access: ${revokeError.message}`);
         },
       },
     );
@@ -697,6 +700,9 @@ export default function AuditorsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {AlertDialogElement}
+      {ConfirmDialogElement}
     </div>
   );
 }

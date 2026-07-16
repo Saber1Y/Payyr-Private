@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { Providers } from "@/components/providers";
-import { QueryProviders } from "@/config/WagmiProviders";
+import { QueryProviders } from "@/config/QueryProviders";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 const sora = localFont({
   src: [
@@ -54,11 +55,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${sora.variable} antialiased bg-gray-50`}>
-        <QueryProviders>
-          <Providers>
-            {children}
-          </Providers>
-        </QueryProviders>
+        <ErrorBoundary>
+          <QueryProviders>
+            <Providers>
+              {children}
+            </Providers>
+          </QueryProviders>
+        </ErrorBoundary>
       </body>
     </html>
   );

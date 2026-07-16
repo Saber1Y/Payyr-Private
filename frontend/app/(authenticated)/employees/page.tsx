@@ -2,7 +2,7 @@
 
 export const dynamic = "force-dynamic";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { NoAccessState } from "@/components/access/NoAccessState";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,12 +41,14 @@ import {
   useDeactivateEmployee,
   useActivateEmployee,
 } from "@/lib/daml/hooks";
-import { ContractRecord, damlClient } from "@/lib/daml/client";
+import { ContractRecord } from "@/lib/daml/client";
 import { ensureEmployerContract } from "@/lib/daml/employeeRegistry";
 import type { Employer } from "@/lib/daml/employeeRegistry";
 import { resolveDamlParty } from "@/lib/daml/partyMapper";
 import { useDamlParty } from "@/hooks/useDamlParty";
 import { formatPayrollAmount, getSalaryLabel } from "@/lib/payrollCurrency";
+import { useAlert, useConfirm } from "@/hooks/useDialogs";
+import { TableSkeleton } from "@/components/ui/skeleton";
 
 interface FormData {
   name: string;
@@ -60,10 +62,8 @@ export default function EmployeesPage() {
   const { ready, authenticated } = usePrivy();
   const { walletAddress, damlParty: employerParty, walletRole, hasMappedParty } =
     useDamlParty();
-
-  useEffect(() => {
-    damlClient.setParty(employerParty);
-  }, [employerParty]);
+  const { showAlert, AlertDialogElement } = useAlert();
+  const { showConfirm, ConfirmDialogElement } = useConfirm();
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -113,37 +113,37 @@ export default function EmployeesPage() {
       !formData.salary ||
       !formData.role
     ) {
-      alert("Please fill in all fields");
+      showAlert("Please fill in all fields");
       return;
     }
 
     if (!walletAddress) {
-      alert("Please connect your wallet first");
+      showAlert("Please connect your wallet first");
       return;
     }
 
     if (!hasMappedParty) {
-      alert(
+      showAlert(
         `Connected wallet ${walletAddress} is not mapped to a Daml party. Sign in with one of the seeded local test wallets or rerun the local Daml reset script.`,
       );
       return;
     }
 
     if (!employerParty) {
-      alert("Your Daml employer party is still loading. Please try again.");
+      showAlert("Your Daml employer party is still loading. Please try again.");
       return;
     }
 
     let employerContract: ContractRecord<Employer>;
 
     try {
-      employerContract = await ensureEmployerContract(employerParty);
+      employerContract = await ensureEmployerContract(employerParty, employerParty);
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
           : "Unable to load employer contract";
-      alert(`Error: ${message}`);
+      showAlert(`Error: ${message}`);
       return;
     }
 
@@ -155,6 +155,7 @@ export default function EmployeesPage() {
         salary: parseFloat(formData.salary),
         role: formData.role,
         startDate: new Date(formData.startDate).toISOString(),
+        party: employerParty,
       },
       {
         onSuccess: () => {
@@ -162,7 +163,7 @@ export default function EmployeesPage() {
           resetForm();
         },
         onError: (err) => {
-          alert(`Error: ${err.message}`);
+          showAlert(`Error: ${err.message}`);
         },
       },
     );
@@ -193,7 +194,7 @@ export default function EmployeesPage() {
       !formData.role ||
       !editingContractId
     ) {
-      alert("Please fill in all fields");
+      showAlert("Please fill in all fields");
       return;
     }
 
@@ -203,6 +204,7 @@ export default function EmployeesPage() {
         newName: formData.name,
         newSalary: parseFloat(formData.salary),
         newRole: formData.role,
+        party: employerParty,
       },
       {
         onSuccess: () => {
@@ -210,26 +212,29 @@ export default function EmployeesPage() {
           resetForm();
         },
         onError: (err) => {
-          alert(`Error: ${err.message}`);
+          showAlert(`Error: ${err.message}`);
         },
       },
     );
   };
 
-  const handleDeactivateEmployee = (contractId: string) => {
-    if (confirm("Are you sure you want to deactivate this employee?")) {
-      deactivateEmployee(contractId, {
+  const handleDeactivateEmployee = async (contractId: string) => {
+    const confirmed = await showConfirm(
+      "Are you sure you want to deactivate this employee?",
+    );
+    if (confirmed) {
+      deactivateEmployee({ contractId, party: employerParty }, {
         onError: (err) => {
-          alert(`Error: ${err.message}`);
+          showAlert(`Error: ${err.message}`);
         },
       });
     }
   };
 
   const handleActivateEmployee = (contractId: string) => {
-    activateEmployee(contractId, {
+    activateEmployee({ contractId, party: employerParty }, {
       onError: (err) => {
-        alert(`Error: ${err.message}`);
+        showAlert(`Error: ${err.message}`);
       },
     });
   };
@@ -387,9 +392,8 @@ export default function EmployeesPage() {
               Please authenticate to view employees.
             </div>
           ) : isLoading ? (
-            <div className="text-center py-8 text-gray-500">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
-              Loading employees...
+            <div className="py-4">
+              <TableSkeleton rows={4} />
             </div>
           ) : error ? (
             <div className="text-center py-8 text-red-500">
@@ -577,6 +581,9 @@ export default function EmployeesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {AlertDialogElement}
+      {ConfirmDialogElement}
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 export const dynamic = "force-dynamic";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
 import { NoAccessState } from "@/components/access/NoAccessState";
@@ -42,26 +42,25 @@ import {
   useFundEmployerBalance,
   usePayrollsByEmployer,
 } from "@/lib/daml/hooks";
-import { ContractRecord, damlClient } from "@/lib/daml/client";
+import { ContractRecord } from "@/lib/daml/client";
 import {
   ensurePayrollManagerContract,
   type PayrollManager,
 } from "@/lib/daml/payrollManager";
 import { useDamlParty } from "@/hooks/useDamlParty";
 import { DEFAULT_PAYROLL_CURRENCY, formatPayrollAmount } from "@/lib/payrollCurrency";
+import { useAlert } from "@/hooks/useDialogs";
+import { CardSkeleton, Skeleton } from "@/components/ui/skeleton";
 
 export default function PayrollPage() {
   const router = useRouter();
   const { authenticated } = usePrivy();
   const { damlParty: employerParty, walletRole } = useDamlParty();
+  const { showAlert, AlertDialogElement } = useAlert();
 
   const [isRunDialogOpen, setIsRunDialogOpen] = useState(false);
   const [isFundDialogOpen, setIsFundDialogOpen] = useState(false);
   const [fundAmount, setFundAmount] = useState("5000");
-
-  useEffect(() => {
-    damlClient.setParty(employerParty);
-  }, [employerParty]);
 
   const { data: employerContracts, isLoading: isEmployerLoading } =
     useEmployerContracts(employerParty);
@@ -117,12 +116,12 @@ export default function PayrollPage() {
 
   const handleRunPayroll = async () => {
     if (!employerParty) {
-      alert("Please authenticate first.");
+      showAlert("Please authenticate first.");
       return;
     }
 
     if (activeEmployeeRecords.length === 0) {
-      alert("Add at least one active employee before running payroll.");
+      showAlert("Add at least one active employee before running payroll.");
       return;
     }
 
@@ -130,13 +129,13 @@ export default function PayrollPage() {
 
     try {
       payrollManagerContract =
-        await ensurePayrollManagerContract(employerParty);
+        await ensurePayrollManagerContract(employerParty, employerParty);
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
           : "Unable to load payroll manager contract";
-      alert(`Error: ${message}`);
+      showAlert(`Error: ${message}`);
       return;
     }
 
@@ -148,13 +147,14 @@ export default function PayrollPage() {
           (employee) => employee.payload,
         ),
         timestamp: new Date().toISOString(),
+        party: employerParty,
       },
       {
         onSuccess: () => {
           setIsRunDialogOpen(false);
         },
         onError: (error) => {
-          alert(`Failed to run payroll: ${error.message}`);
+          showAlert(`Failed to run payroll: ${error.message}`);
         },
       },
     );
@@ -162,14 +162,14 @@ export default function PayrollPage() {
 
   const handleFundTreasury = async () => {
     if (!employerParty) {
-      alert("Please authenticate first.");
+      showAlert("Please authenticate first.");
       return;
     }
 
     const parsedAmount = Number(fundAmount);
 
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      alert("Enter a treasury funding amount greater than 0.");
+      showAlert("Enter a treasury funding amount greater than 0.");
       return;
     }
 
@@ -177,13 +177,13 @@ export default function PayrollPage() {
 
     try {
       payrollManagerContract =
-        await ensurePayrollManagerContract(employerParty);
+        await ensurePayrollManagerContract(employerParty, employerParty);
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
           : "Unable to load payroll manager contract";
-      alert(`Error: ${message}`);
+      showAlert(`Error: ${message}`);
       return;
     }
 
@@ -192,6 +192,7 @@ export default function PayrollPage() {
         contractId: payrollManagerContract.contractId,
         employer: employerParty,
         amount: parsedAmount,
+        party: employerParty,
       },
       {
         onSuccess: () => {
@@ -199,7 +200,7 @@ export default function PayrollPage() {
           setFundAmount("5000");
         },
         onError: (error) => {
-          alert(`Failed to fund treasury: ${error.message}`);
+          showAlert(`Failed to fund treasury: ${error.message}`);
         },
       },
     );
@@ -218,11 +219,14 @@ export default function PayrollPage() {
   if (isEmployerLoading) {
     return (
       <div className="min-h-screen bg-[#114277] p-4 md:p-8">
-        <Card className="text-black">
-          <CardContent className="pt-6 text-gray-600">
-            Loading payroll workspace...
-          </CardContent>
-        </Card>
+        <div className="space-y-6">
+          <Skeleton className="h-8 w-48" />
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <CardSkeleton key={i} />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -683,6 +687,8 @@ export default function PayrollPage() {
           )}
         </CardContent>
       </Card>
+
+      {AlertDialogElement}
     </div>
   );
 }

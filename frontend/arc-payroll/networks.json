@@ -1,8 +1,0 @@
-{
-  "base-sepolia": {
-    "PayrollManager": {
-      "address": "0xde609E52D9164C227D4F174D6260289bc3E62eC2",
-      "startBlock": 34942402
-    }
-  }
-}

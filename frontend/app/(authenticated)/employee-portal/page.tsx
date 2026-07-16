@@ -2,7 +2,6 @@
 
 export const dynamic = "force-dynamic";
 
-import { useEffect } from "react";
 import { useMemo } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { NoAccessState } from "@/components/access/NoAccessState";
@@ -22,17 +21,14 @@ import {
   useEmployeePayments,
   useEmployeeWallets,
 } from "@/lib/daml/hooks";
-import { damlClient } from "@/lib/daml/client";
 import { useDamlParty } from "@/hooks/useDamlParty";
 import { DEFAULT_PAYROLL_CURRENCY, formatPayrollAmount } from "@/lib/payrollCurrency";
+import { useAlert } from "@/hooks/useDialogs";
 
 export default function EmployeePortalPage() {
   const { authenticated } = usePrivy();
   const { damlParty: employeeParty, walletRole } = useDamlParty();
-
-  useEffect(() => {
-    damlClient.setParty(employeeParty);
-  }, [employeeParty]);
+  const { showAlert, AlertDialogElement } = useAlert();
 
   const {
     data: payments,
@@ -253,9 +249,9 @@ export default function EmployeePortalPage() {
                           <Button
                             disabled={isPending}
                             onClick={() =>
-                              claimPayment(payment.contractId, {
+                              claimPayment({ contractId: payment.contractId, party: employeeParty }, {
                                 onError: (claimError) => {
-                                  alert(
+                                  showAlert(
                                     `Failed to claim payment: ${claimError.message}`,
                                   );
                                 },
@@ -403,6 +399,8 @@ export default function EmployeePortalPage() {
           </CardContent>
         </Card>
       </div>
+
+      {AlertDialogElement}
     </div>
   );
 }

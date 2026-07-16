@@ -2,7 +2,7 @@
 
 export const dynamic = "force-dynamic";
 
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
 import { NoAccessState } from "@/components/access/NoAccessState";
@@ -23,18 +23,14 @@ import {
   useEmployerContracts,
   usePayrollsByEmployer,
 } from "@/lib/daml/hooks";
-import { damlClient } from "@/lib/daml/client";
 import { useDamlParty } from "@/hooks/useDamlParty";
 import { DEFAULT_PAYROLL_CURRENCY, formatPayrollAmount } from "@/lib/payrollCurrency";
+import { DashboardSkeleton, Skeleton } from "@/components/ui/skeleton";
 
 export default function DashboardPage() {
   const router = useRouter();
   const { authenticated } = usePrivy();
   const { damlParty: employerParty, walletRole } = useDamlParty();
-
-  useEffect(() => {
-    damlClient.setParty(employerParty);
-  }, [employerParty]);
 
   const {
     data: employerContracts,
@@ -90,11 +86,7 @@ export default function DashboardPage() {
   if (isLoading && !isEmployer) {
     return (
       <div className="min-h-screen bg-[#114277] p-4 md:p-8">
-        <Card className="text-black">
-          <CardContent className="pt-6 text-gray-600">
-            Loading employer workspace...
-          </CardContent>
-        </Card>
+        <DashboardSkeleton />
       </div>
     );
   }
@@ -231,8 +223,10 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 {isLoading ? (
-                  <div className="py-4 text-center text-gray-500">
-                    Loading payroll activity...
+                  <div className="space-y-3">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <Skeleton key={i} className="h-16 w-full" />
+                    ))}
                   </div>
                 ) : recentPayrolls.length === 0 ? (
                   <div className="py-4 text-center text-gray-500">

@@ -36,12 +36,8 @@ export class DamlClient {
     this.config = { ...defaultDamlConfig, ...config };
   }
 
-  setParty(party: string) {
-    this.config.party = party;
-  }
-
-  setAccessToken(accessToken: string) {
-    this.config.accessToken = accessToken;
+  private resolveParty(explicit?: string): string {
+    return explicit || this.config.party;
   }
 
   private getApiUrl(endpoint: string): string {
@@ -129,14 +125,19 @@ export class DamlClient {
     return response.json() as Promise<T>;
   }
 
-  // Query contracts
   async queryContracts<T>(
     templateId: string,
     predicate?: Record<string, unknown>,
+    party?: string,
   ): Promise<ContractRecord<T>[]> {
-    const response = await this.request<unknown>(`/v1/query`, "POST", {
+    const resolvedParty = this.resolveParty(party);
+    const query = resolvedParty
+      ? { ...predicate, party: resolvedParty }
+      : predicate ?? {};
+
+    const response = await this.request<unknown>("/v1/query", "POST", {
       templateIds: [templateId],
-      query: predicate ?? {},
+      query,
     });
     const result = this.extractResult<unknown[]>(response);
 
@@ -149,19 +150,25 @@ export class DamlClient {
       .filter((item): item is ContractRecord<T> => item !== null);
   }
 
-  // Exercise choice
   async exerciseChoice<T>(
     templateId: string,
     contractId: string,
     choice: string,
     argument: unknown,
+    party?: string,
   ): Promise<ContractRecord<T>> {
-    const response = await this.request<unknown>(`/v1/exercise`, "POST", {
+    const resolvedParty = this.resolveParty(party);
+    const payload: Record<string, unknown> = {
       templateId,
       contractId,
       choice,
       argument,
-    });
+    };
+    if (resolvedParty) {
+      payload.actor = resolvedParty;
+    }
+
+    const response = await this.request<unknown>("/v1/exercise", "POST", payload);
 
     const result = this.extractResult<{
       events?: unknown[];
@@ -187,16 +194,18 @@ export class DamlClient {
     throw new Error(`No created contract returned from choice ${choice}`);
   }
 
-  // Create contract
   async createContract<T>(
     templateId: string,
     payload: T,
+    party?: string,
   ): Promise<ContractRecord<T>> {
-    const response = await this.request<unknown>(`/v1/create`, "POST", {
-      templateId,
-      payload,
-    });
+    const resolvedParty = this.resolveParty(party);
+    const body: Record<string, unknown> = { templateId, payload };
+    if (resolvedParty) {
+      body.actor = resolvedParty;
+    }
 
+    const response = await this.request<unknown>("/v1/create", "POST", body);
     const result = this.extractResult<unknown>(response);
     const contract = this.normalizeContractRecord<T>(result);
 

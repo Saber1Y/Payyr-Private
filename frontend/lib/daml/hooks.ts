@@ -5,34 +5,30 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as employeeRegistry from "./employeeRegistry";
 import * as payrollManager from "./payrollManager";
 
-// Hook to query employees by employer
 export function useEmployeesByEmployer(employer: string) {
   return useQuery({
     queryKey: ["employees", employer],
-    queryFn: () => employeeRegistry.getEmployeesByEmployer(employer),
+    queryFn: () => employeeRegistry.getEmployeesByEmployer(employer, employer),
     enabled: !!employer,
   });
 }
 
-// Hook to query active employees
 export function useActiveEmployees(employer: string) {
   return useQuery({
     queryKey: ["activeEmployees", employer],
-    queryFn: () => employeeRegistry.getActiveEmployees(employer),
+    queryFn: () => employeeRegistry.getActiveEmployees(employer, employer),
     enabled: !!employer,
   });
 }
 
-// Hook to query employer contracts
 export function useEmployerContracts(employer: string) {
   return useQuery({
     queryKey: ["employerContracts", employer],
-    queryFn: () => employeeRegistry.getEmployerContracts(employer),
+    queryFn: () => employeeRegistry.getEmployerContracts(employer, employer),
     enabled: !!employer,
   });
 }
 
-// Hook to register an employee
 export function useRegisterEmployee() {
   const queryClient = useQueryClient();
 
@@ -44,6 +40,7 @@ export function useRegisterEmployee() {
       salary: number;
       role: string;
       startDate: string;
+      party: string;
     }) =>
       employeeRegistry.registerEmployee(
         data.contractId,
@@ -52,6 +49,7 @@ export function useRegisterEmployee() {
         data.salary,
         data.role,
         data.startDate,
+        data.party,
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["employees"] });
@@ -60,7 +58,6 @@ export function useRegisterEmployee() {
   });
 }
 
-// Hook to update an employee
 export function useUpdateEmployee() {
   const queryClient = useQueryClient();
 
@@ -70,12 +67,14 @@ export function useUpdateEmployee() {
       newName: string;
       newSalary: number;
       newRole: string;
+      party: string;
     }) =>
       employeeRegistry.updateEmployee(
         data.contractId,
         data.newName,
         data.newSalary,
         data.newRole,
+        data.party,
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["employees"] });
@@ -83,13 +82,12 @@ export function useUpdateEmployee() {
   });
 }
 
-// Hook to deactivate an employee
 export function useDeactivateEmployee() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (contractId: string) =>
-      employeeRegistry.deactivateEmployee(contractId),
+    mutationFn: (data: { contractId: string; party: string }) =>
+      employeeRegistry.deactivateEmployee(data.contractId, data.party),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["employees"] });
       queryClient.invalidateQueries({ queryKey: ["activeEmployees"] });
@@ -97,13 +95,12 @@ export function useDeactivateEmployee() {
   });
 }
 
-// Hook to activate an employee
 export function useActivateEmployee() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (contractId: string) =>
-      employeeRegistry.activateEmployee(contractId),
+    mutationFn: (data: { contractId: string; party: string }) =>
+      employeeRegistry.activateEmployee(data.contractId, data.party),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["employees"] });
       queryClient.invalidateQueries({ queryKey: ["activeEmployees"] });
@@ -111,11 +108,10 @@ export function useActivateEmployee() {
   });
 }
 
-// Hook to query payrolls by employer
 export function usePayrollsByEmployer(employer: string) {
   return useQuery({
     queryKey: ["payrolls", employer],
-    queryFn: () => payrollManager.getPayrollsByEmployer(employer),
+    queryFn: () => payrollManager.getPayrollsByEmployer(employer, employer),
     enabled: !!employer,
   });
 }
@@ -128,11 +124,10 @@ export function useVisiblePayrolls(enabled = true) {
   });
 }
 
-// Hook to query payroll manager contracts
 export function usePayrollManagerContracts(admin: string) {
   return useQuery({
     queryKey: ["payrollManagers", admin],
-    queryFn: () => payrollManager.getPayrollManagerContracts(admin),
+    queryFn: () => payrollManager.getPayrollManagerContracts(admin, admin),
     enabled: !!admin,
   });
 }
@@ -140,12 +135,11 @@ export function usePayrollManagerContracts(admin: string) {
 export function useEmployerBalances(employer: string) {
   return useQuery({
     queryKey: ["employerBalances", employer],
-    queryFn: () => payrollManager.getEmployerBalances(employer),
+    queryFn: () => payrollManager.getEmployerBalances(employer, employer),
     enabled: !!employer,
   });
 }
 
-// Hook to create a payroll run
 export function useCreatePayrollRun() {
   const queryClient = useQueryClient();
 
@@ -155,12 +149,14 @@ export function useCreatePayrollRun() {
       employer: string;
       employeeProfiles: unknown[];
       timestamp: string;
+      party: string;
     }) =>
       payrollManager.createPayrollRun(
         data.contractId,
         data.employer,
         data.employeeProfiles,
         data.timestamp,
+        data.party,
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payrolls"] });
@@ -171,38 +167,36 @@ export function useCreatePayrollRun() {
   });
 }
 
-// Hook to grant payroll auditor access
 export function useGrantPayrollAuditorAccess() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: { contractId: string; auditor: string }) =>
-      payrollManager.grantAuditorAccessPayroll(data.contractId, data.auditor),
+    mutationFn: (data: { contractId: string; auditor: string; party: string }) =>
+      payrollManager.grantAuditorAccessPayroll(data.contractId, data.auditor, data.party),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payrolls"] });
     },
   });
 }
 
-// Hook to revoke payroll auditor access
 export function useRevokePayrollAuditorAccess() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: { contractId: string; auditor: string }) =>
-      payrollManager.revokeAuditorAccessPayroll(data.contractId, data.auditor),
+    mutationFn: (data: { contractId: string; auditor: string; party: string }) =>
+      payrollManager.revokeAuditorAccessPayroll(data.contractId, data.auditor, data.party),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payrolls"] });
     },
   });
 }
 
-// Hook to claim payment
 export function useClaimPayment() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (contractId: string) => payrollManager.claimPayment(contractId),
+    mutationFn: (data: { contractId: string; party: string }) =>
+      payrollManager.claimPayment(data.contractId, data.party),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payments"] });
     },
@@ -217,11 +211,13 @@ export function useFundEmployerBalance() {
       contractId: string;
       employer: string;
       amount: number;
+      party: string;
     }) =>
       payrollManager.withdrawPayroll(
         data.contractId,
         data.employer,
         data.amount,
+        data.party,
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["employerBalances"] });
@@ -230,20 +226,18 @@ export function useFundEmployerBalance() {
   });
 }
 
-// Hook to query all employee payments
 export function useEmployeePayments(employee: string) {
   return useQuery({
     queryKey: ["payments", employee],
-    queryFn: () => payrollManager.getEmployeePayments(employee),
+    queryFn: () => payrollManager.getEmployeePayments(employee, employee),
     enabled: !!employee,
   });
 }
 
-// Hook to query unclaimed payments
 export function useUnclaimedPayments(employee: string) {
   return useQuery({
     queryKey: ["unclaimedPayments", employee],
-    queryFn: () => payrollManager.getUnclaimedPayments(employee),
+    queryFn: () => payrollManager.getUnclaimedPayments(employee, employee),
     enabled: !!employee,
   });
 }
@@ -251,7 +245,7 @@ export function useUnclaimedPayments(employee: string) {
 export function useEmployeeWallets(employee: string) {
   return useQuery({
     queryKey: ["employeeWallets", employee],
-    queryFn: () => employeeRegistry.getEmployeeWallets(employee),
+    queryFn: () => employeeRegistry.getEmployeeWallets(employee, employee),
     enabled: !!employee,
   });
 }

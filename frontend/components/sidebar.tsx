@@ -10,7 +10,6 @@ import {
   Settings,
   DollarSign,
   PanelRight,
-  Lock,
   Eye,
   ShieldCheck,
 } from "lucide-react";
@@ -56,7 +55,7 @@ export function Sidebar() {
   const [isOpen, setIsOpen] = useState(true);
   const { authenticated } = usePrivy();
 
-  const handleNavClick = (e: React.MouseEvent, href: string) => {
+  const handleNavClick = (e: React.MouseEvent) => {
     if (!authenticated) {
       e.preventDefault();
     }
@@ -100,7 +99,7 @@ export function Sidebar() {
               key={item.name}
               href={item.href}
               title={!isOpen ? item.name : undefined}
-              onClick={(e) => handleNavClick(e, item.href)}
+              onClick={(e) => handleNavClick(e)}
               className={cn(
                 "group flex items-center px-2 py-2 text-sm font-medium rounded-lg transition-colors relative",
                 isActive

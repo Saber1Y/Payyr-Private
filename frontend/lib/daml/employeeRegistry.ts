@@ -33,23 +33,24 @@ export interface Employer {
 
 export async function getEmployerContracts(
   employer: string,
+  party?: string,
 ): Promise<ContractRecord<Employer>[]> {
-  return damlClient.queryContracts<Employer>(EMPLOYER_TEMPLATE, { employer });
+  return damlClient.queryContracts<Employer>(EMPLOYER_TEMPLATE, { employer }, party);
 }
 
 export async function ensureEmployerContract(
   employer: string,
+  party?: string,
 ): Promise<ContractRecord<Employer>> {
-  const contracts = await getEmployerContracts(employer);
+  const contracts = await getEmployerContracts(employer, party);
 
   if (contracts.length > 0) {
     return contracts[0];
   }
 
-  return damlClient.createContract<Employer>(EMPLOYER_TEMPLATE, { employer });
+  return damlClient.createContract<Employer>(EMPLOYER_TEMPLATE, { employer }, party);
 }
 
-// Register a new employee
 export async function registerEmployee(
   contractId: string,
   employee: string,
@@ -57,104 +58,103 @@ export async function registerEmployee(
   salary: number,
   role: string,
   startDate: string,
+  party?: string,
 ): Promise<{ contractId: string; payload: EmployeeProfile }> {
-  return damlClient.exerciseChoice(EMPLOYER_TEMPLATE, contractId, "RegisterEmployee", {
-    employee,
-    name,
-    salary,
-    role,
-    startDate,
-  });
+  return damlClient.exerciseChoice(
+    EMPLOYER_TEMPLATE,
+    contractId,
+    "RegisterEmployee",
+    { employee, name, salary, role, startDate },
+    party,
+  );
 }
 
-// Update employee details
 export async function updateEmployee(
   contractId: string,
   newName: string,
   newSalary: number,
   newRole: string,
+  party?: string,
 ): Promise<{ contractId: string; payload: EmployeeProfile }> {
   return damlClient.exerciseChoice(
     EMPLOYEE_REGISTRY_TEMPLATE,
     contractId,
     "UpdateEmployee",
-    {
-    newName,
-    newSalary,
-    newRole,
-    },
+    { newName, newSalary, newRole },
+    party,
   );
 }
 
-// Deactivate employee
 export async function deactivateEmployee(
   contractId: string,
+  party?: string,
 ): Promise<{ contractId: string; payload: EmployeeProfile }> {
   return damlClient.exerciseChoice(
     EMPLOYEE_REGISTRY_TEMPLATE,
     contractId,
     "DeactivateEmployee",
     {},
+    party,
   );
 }
 
-// Activate employee
 export async function activateEmployee(
   contractId: string,
+  party?: string,
 ): Promise<{ contractId: string; payload: EmployeeProfile }> {
   return damlClient.exerciseChoice(
     EMPLOYEE_REGISTRY_TEMPLATE,
     contractId,
     "ActivateEmployee",
     {},
+    party,
   );
 }
 
-// Grant auditor access
 export async function grantAuditorAccess(
   contractId: string,
   auditor: string,
+  party?: string,
 ): Promise<{ contractId: string; payload: EmployeeProfile }> {
   return damlClient.exerciseChoice(
     EMPLOYEE_REGISTRY_TEMPLATE,
     contractId,
     "GrantAuditorAccess",
-    {
-      auditor,
-    },
+    { auditor },
+    party,
   );
 }
 
-// Revoke auditor access
 export async function revokeAuditorAccess(
   contractId: string,
   auditor: string,
+  party?: string,
 ): Promise<{ contractId: string; payload: EmployeeProfile }> {
   return damlClient.exerciseChoice(
     EMPLOYEE_REGISTRY_TEMPLATE,
     contractId,
     "RevokeAuditorAccess",
-    {
-      auditor,
-    },
+    { auditor },
+    party,
   );
 }
 
-// Query all employees for an employer
 export async function getEmployeesByEmployer(
   employer: string,
+  party?: string,
 ): Promise<ContractRecord<EmployeeProfile>[]> {
   return damlClient.queryContracts<EmployeeProfile>(
     EMPLOYEE_REGISTRY_TEMPLATE,
     { employer },
+    party,
   );
 }
 
-// Query active employees only
 export async function getActiveEmployees(
   employer: string,
+  party?: string,
 ): Promise<ContractRecord<EmployeeProfile>[]> {
-  const employees = await getEmployeesByEmployer(employer);
+  const employees = await getEmployeesByEmployer(employer, party);
   return employees.filter((emp) => emp.payload.isActive);
 }
 
@@ -163,8 +163,9 @@ export const EMPLOYEE_WALLET_TEMPLATE =
 
 export async function getEmployeeWallets(
   employee: string,
+  party?: string,
 ): Promise<ContractRecord<EmployeeWallet>[]> {
   return damlClient.queryContracts<EmployeeWallet>(EMPLOYEE_WALLET_TEMPLATE, {
     employee,
-  });
+  }, party);
 }

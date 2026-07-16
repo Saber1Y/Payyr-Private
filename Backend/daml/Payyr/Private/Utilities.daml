@@ -1,0 +1,12 @@
+module Payyr.Private.Utilities where
+
+containsParty : Party -> [Party] -> Bool
+containsParty _ [] = False
+containsParty x (y :: ys) = x == y || containsParty x ys
+
+nubParties : [Party] -> [Party]
+nubParties [] = []
+nubParties (x :: xs) = if containsParty x xs then nubParties xs else x :: nubParties xs
+
+privatePayrollCurrency : Text
+privatePayrollCurrency = "pUSD"

@@ -7,10 +7,7 @@ export function WalletConnect() {
   const {
     isReady,
     isAuthenticated,
-    user,
-    walletAddress,
     hasWallet,
-    isEmbeddedWallet,
     connectExternalWallet,
     disconnectWallet,
   } = useWalletConnection();

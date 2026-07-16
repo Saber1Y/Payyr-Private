@@ -1,8 +1,7 @@
 module Payyr.Private.PayrollManager where
 
-import DA.List (filter)
 import Payyr.Private.EmployeeRegistry (EmployeeProfile(..), EmployeeWallet(..))
-import Payyr.Private.Utilities (containsParty, nubParties, privatePayrollCurrency)
+import Payyr.Private.Utilities (containsParty, privatePayrollCurrency)
 
 sumSalary : [EmployeeProfile] -> Decimal
 sumSalary = foldr (\ep acc -> ep.salary + acc) 0.0

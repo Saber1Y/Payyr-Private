@@ -1,7 +1,5 @@
 module Payyr.Private.EmployeeRegistry where
 
-import DA.List (filter)
-import DA.Text
 import Payyr.Private.Utilities (containsParty, nubParties, privatePayrollCurrency)
 
 template Employer
